@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SidebarNav } from "@/components/admin/SidebarNav";
 import { SignOutButton } from "@/components/admin/SignOutButton";
+import { authMode } from "@/lib/auth/policy";
 import { getCurrentStaff } from "@/lib/auth/staff";
 import { getBackendKind } from "@/lib/sheets/client";
 
@@ -11,7 +12,14 @@ export const dynamic = "force-dynamic";
 export default async function SurveyLayout({ children }: { children: React.ReactNode }) {
   const staff = await getCurrentStaff();
   if (!staff) redirect("/login");
-  const local = getBackendKind() === "local";
+  // 저장소 설정 오류는 여기서 터뜨리지 않고 각 화면의 오류 안내(error.tsx)로 넘김
+  let local = false;
+  try {
+    local = getBackendKind() === "local";
+  } catch {
+    local = false;
+  }
+  const testMode = authMode(process.env) === "test";
 
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[250px_1fr] print:block">
@@ -67,9 +75,14 @@ export default async function SurveyLayout({ children }: { children: React.React
               <span className="sr-only">{staff.email}</span>
               <span className="text-muted-text">{staff.role === "admin" ? "담당자" : "열람자"}</span>
             </span>
-            <SignOutButton />
+            {!testMode && <SignOutButton />}
           </div>
         </header>
+        {testMode && (
+          <p role="note" className="border-b border-line bg-lime-soft px-4 py-2 text-[13px] font-semibold lg:px-8">
+            시험 모드: 로그인 없이 누구나 이 화면에 들어올 수 있음. 더미 데이터만 넣을 것(실제 응답·개인정보 금지).
+          </p>
+        )}
         <main id="main" className="px-4 py-6 lg:px-8 lg:py-8">
           {children}
         </main>

@@ -13,7 +13,9 @@
     "sheets:check": "tsx --env-file-if-exists=.env.local scripts/sheets-check.ts",
     "sheets:init": "tsx --env-file-if-exists=.env.local scripts/sheets-init.ts",
     "test:coverage": "vitest run --coverage",
-    "seed:dummy": "tsx --env-file-if-exists=.env.local scripts/seed-dummy.ts"
+    "seed:dummy": "tsx --env-file-if-exists=.env.local scripts/seed-dummy.ts",
+    "prod:check": "tsx --env-file=.env.production-sheet.local scripts/sheets-check.ts",
+    "prod:init": "tsx --env-file=.env.production-sheet.local scripts/sheets-init.ts --production"
   },
   "dependencies": {
     "@googleapis/sheets": "^18.1.2",

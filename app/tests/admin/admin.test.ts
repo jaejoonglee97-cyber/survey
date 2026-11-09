@@ -3,7 +3,7 @@ import * as cmd from "@/lib/admin/commands";
 import { buildCsv, csvFileName } from "@/lib/admin/csv";
 import * as ops from "@/lib/admin/editor-ops";
 import { daysLeft, dLabel, homeStats, responseRate, sortForList, type OverviewItem } from "@/lib/admin/overview";
-import { canAccess, devLoginEnabled, isAllowedEmail, safeCallbackPath } from "@/lib/auth/policy";
+import { authMode, canAccess, devLoginEnabled, isAllowedEmail, safeCallbackPath } from "@/lib/auth/policy";
 import { MemoryGateway } from "@/lib/sheets/memory-gateway";
 import { SurveyStore } from "@/lib/store/survey-store";
 import { exportMd, importMd, validateDraft, type SurveySpec } from "@/lib/survey-core";
@@ -30,6 +30,16 @@ describe("접근 규칙", () => {
     expect(isAllowedEmail("kim@sasw.or.kr", undefined)).toBe(false);
     expect(isAllowedEmail("not-email", "sasw.or.kr")).toBe(false);
     expect(isAllowedEmail(null, "sasw.or.kr")).toBe(false);
+  });
+
+  it("로그인 없는 시험 모드는 더미 데이터일 때만, 운영 시트면 차단", () => {
+    expect(authMode({})).toBe("on");
+    expect(authMode({ AUTH_MODE: "on", SHEETS_ENV: "dummy" })).toBe("on");
+    expect(authMode({ AUTH_MODE: "off" })).toBe("test"); // SHEETS_ENV 기본값은 dummy
+    expect(authMode({ AUTH_MODE: "OFF ", SHEETS_ENV: "dummy" })).toBe("test");
+    expect(authMode({ AUTH_MODE: "off", DATA_BACKEND: "local" })).toBe("test");
+    expect(authMode({ AUTH_MODE: "off", SHEETS_ENV: "production" })).toBe("blocked");
+    expect(authMode({ AUTH_MODE: "off", SHEETS_ENV: "production ", DATA_BACKEND: "google" })).toBe("blocked");
   });
 
   it("개발용 로그인은 로컬 더미 모드의 개발 서버에서만", () => {

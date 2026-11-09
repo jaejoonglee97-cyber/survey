@@ -26,6 +26,24 @@ export function isAllowedEmail(email: string | null | undefined, allowedDomains:
   return allowed.includes(domain);
 }
 
+/**
+ * 로그인 방식.
+ *  - "on"     : 직원 로그인 사용(기본)
+ *  - "test"   : AUTH_MODE=off 이고 데이터가 더미일 때. 로그인 없이 모두 담당자로 들어옴(기능 시험용)
+ *  - "blocked": AUTH_MODE=off 인데 운영 시트(SHEETS_ENV=production)를 가리킴. 직원 화면을 열지 않음
+ * 인터넷에 열린 주소이므로 실제 응답이 들어 있는 시트에서는 로그인 없는 모드를 허용하지 않음.
+ */
+export type AuthMode = "on" | "test" | "blocked";
+
+export function authMode(env: Record<string, string | undefined>): AuthMode {
+  if ((env.AUTH_MODE ?? "").trim().toLowerCase() !== "off") return "on";
+  const dummy = env.DATA_BACKEND === "local" || (env.SHEETS_ENV ?? "dummy").trim() !== "production";
+  return dummy ? "test" : "blocked";
+}
+
+/** 시험 모드에서 쓰는 가상의 담당자 */
+export const TEST_MODE_STAFF = { email: "test-mode@localhost", role: "admin" as const };
+
 /** 개발용 로그인(이메일만으로 로그인)은 로컬 더미 데이터 모드의 개발 서버에서만 켬 */
 export function devLoginEnabled(env: Record<string, string | undefined>): boolean {
   return env.DATA_BACKEND === "local" && !env.VERCEL && env.NODE_ENV !== "production";
