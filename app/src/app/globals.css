@@ -22,6 +22,13 @@
   --scale-3: #e3e6df;
   --scale-4: #8fd3c0;
   --scale-5: #2a9d97;
+  /* 편집기 대비 보강: 진한 테두리, 입력칸 배경, 문항 유형 색 */
+  --line-strong: #cbd3cb;
+  --field: #f6f8f6;
+  --t-scale: #2a9d97;
+  --t-single: #4f86d1;
+  --t-multi: #8577dc;
+  --t-text: #3a9f6f;
 }
 
 @theme inline {
@@ -44,6 +51,12 @@
   --color-scale-3: var(--scale-3);
   --color-scale-4: var(--scale-4);
   --color-scale-5: var(--scale-5);
+  --color-line-strong: var(--line-strong);
+  --color-field: var(--field);
+  --color-t-scale: var(--t-scale);
+  --color-t-single: var(--t-single);
+  --color-t-multi: var(--t-multi);
+  --color-t-text: var(--t-text);
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
 }
 
@@ -68,4 +81,14 @@ body {
   article {
     break-inside: avoid;
   }
+}
+
+/* 새로 추가한 문항을 잠깐 강조(움직임 줄이기 설정이면 생략) */
+@keyframes flash-new {
+  0% { box-shadow: 0 0 0 4px var(--lime); background: var(--lime-soft); }
+  100% { box-shadow: 0 0 0 0 transparent; background: var(--surface); }
+}
+.flash-new { animation: flash-new 1.6s ease-out 1; }
+@media (prefers-reduced-motion: reduce) {
+  .flash-new { animation: none; box-shadow: 0 0 0 3px var(--lime); }
 }

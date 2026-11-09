@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { publishAction, saveDraftAction } from "@/app/survey/actions";
 import * as ops from "@/lib/admin/editor-ops";
 import {
@@ -38,8 +38,14 @@ export interface PreviousSurvey {
 
 const TYPE_LABEL: Record<QuestionType, string> = { single: "단일 선택", multi: "복수 선택", scale5: "5점 척도", text: "서술" };
 const CATEGORIES = ["교육", "행사", "사업", "기타"];
-const fieldCls = "h-11 w-full rounded-[10px] border border-line bg-surface px-3 text-[15px] focus-visible:outline-3 focus-visible:outline-teal";
-const labelCls = "block text-[13px] font-semibold";
+const fieldCls =
+  "h-11 w-full rounded-[10px] border border-line-strong bg-field px-3 text-[15px] focus:border-ink focus:bg-surface focus-visible:outline-3 focus-visible:outline-teal";
+// 문항 유형별 색(왼쪽 띠·번호·유형 선택)
+const TYPE_BAR: Record<QuestionType, string> = { scale5: "border-l-t-scale", single: "border-l-t-single", multi: "border-l-t-multi", text: "border-l-t-text" };
+const TYPE_BG: Record<QuestionType, string> = { scale5: "bg-t-scale", single: "bg-t-single", multi: "bg-t-multi", text: "bg-t-text" };
+const TYPE_BORDER: Record<QuestionType, string> = { scale5: "border-t-scale", single: "border-t-single", multi: "border-t-multi", text: "border-t-text" };
+const smallField = "rounded-[10px] border border-line-strong bg-field px-3 focus:border-ink focus:bg-surface";
+const labelCls = "mb-1 block text-[13px] font-semibold";
 
 export function SurveyEditor({ id: initialId, initial, previous }: { id: string | null; initial: SurveySpec; previous: PreviousSurvey[] }) {
   const [id, setId] = useState(initialId);
@@ -57,6 +63,20 @@ export function SurveyEditor({ id: initialId, initial, previous }: { id: string 
   const [dragId, setDragId] = useState<string | null>(null);
   const previewRef = useRef<HTMLDialogElement>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  // 문항을 하나 추가하면 그 카드로 이동하고 잠깐 강조(템플릿·파일로 통째로 바꿀 때는 생략)
+  const [newId, setNewId] = useState<string | null>(null);
+  const prevCount = useRef(initial.questions.length);
+  const skipFlash = useRef(false);
+  useEffect(() => {
+    const n = spec.questions.length;
+    if (skipFlash.current) skipFlash.current = false;
+    else if (n === prevCount.current + 1) {
+      const last = spec.questions[n - 1];
+      setNewId(last.id);
+      requestAnimationFrame(() => document.getElementById(`card-${last.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
+    }
+    prevCount.current = n;
+  }, [spec.questions]);
   const [pending, start] = useTransition();
   const publishRef = useRef<HTMLDialogElement>(null);
   const router = useRouter();
@@ -119,6 +139,7 @@ export function SurveyEditor({ id: initialId, initial, previous }: { id: string 
 
   function applyQuestions() {
     if (!chosen) return;
+    skipFlash.current = true;
     set((s) => ops.replaceQuestions(s, chosen.questions, chosen.kpiQuestionId));
     setMdOpen(false);
     setMdText("");
@@ -133,10 +154,12 @@ export function SurveyEditor({ id: initialId, initial, previous }: { id: string 
       <StartChooser
         previous={previous}
         onTemplate={(t) => {
+          skipFlash.current = true;
           setSpec((s) => applyTemplate(s, t));
           setStarted(true);
         }}
         onCopy={(p) => {
+          skipFlash.current = true;
           setSpec((s) => ({ ...ops.copyQuestionsFrom(s, p), program: p.program, category: p.category }));
           setStarted(true);
           setMsg({ kind: "ok", text: `'${p.title}'의 문항을 가져옴. 제목·링크 주소·마감일을 정할 것.` });
@@ -153,9 +176,12 @@ export function SurveyEditor({ id: initialId, initial, previous }: { id: string 
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
       <div className="min-w-0 space-y-5">
         {/* 기본 정보 */}
-        <section className="rounded-[18px] border border-line bg-surface p-5" aria-labelledby="basics-h">
+        <section className="rounded-[18px] border border-line-strong bg-surface p-5 shadow-sm" aria-labelledby="basics-h">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <h2 id="basics-h" className="text-[17px] font-bold">
+            <h2 id="basics-h" className="flex items-center gap-2 text-[17px] font-bold">
+              <span className="grid size-7 place-items-center rounded-full bg-ink text-[13px] text-white" aria-hidden="true">
+                1
+              </span>
               기본 정보
             </h2>
           </div>
@@ -203,7 +229,7 @@ export function SurveyEditor({ id: initialId, initial, previous }: { id: string 
                 링크 주소 <span className="font-normal text-muted-text">(영문 소문자·숫자·하이픈)</span>
               </label>
               <div className="flex items-center gap-1">
-                <span className="text-[14px] text-muted-text">/s/</span>
+                <span className="shrink-0 whitespace-nowrap text-[14px] text-muted-text">/s/</span>
                 <input
                   id="f-slug"
                   className={fieldCls}
@@ -244,7 +270,7 @@ export function SurveyEditor({ id: initialId, initial, previous }: { id: string 
               <label htmlFor="f-intro" className={labelCls}>
                 안내문 <span className="font-normal text-muted-text">(응답자에게 보임, 합쇼체)</span>
               </label>
-              <textarea id="f-intro" rows={3} maxLength={1000} className="w-full rounded-[10px] border border-line p-3 text-[15px]" value={spec.intro} onChange={(e) => set((s) => ({ ...s, intro: e.target.value }))} />
+              <textarea id="f-intro" rows={3} maxLength={1000} className="w-full rounded-[10px] border border-line-strong bg-field p-3 text-[15px] focus:border-ink focus:bg-surface" value={spec.intro} onChange={(e) => set((s) => ({ ...s, intro: e.target.value }))} />
             </div>
           </div>
 
@@ -269,7 +295,10 @@ export function SurveyEditor({ id: initialId, initial, previous }: { id: string 
         {/* 문항 */}
         <section aria-labelledby="questions-h" className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 id="questions-h" className="text-[17px] font-bold">
+            <h2 id="questions-h" className="flex items-center gap-2 text-[17px] font-bold">
+              <span className="grid size-7 place-items-center rounded-full bg-ink text-[13px] text-white" aria-hidden="true">
+                2
+              </span>
               문항 <span className="text-muted-text">{spec.questions.length}개</span>
             </h2>
             <span className="flex flex-wrap gap-2">
@@ -420,6 +449,7 @@ export function SurveyEditor({ id: initialId, initial, previous }: { id: string 
                 set={set}
                 onDragStart={() => setDragId(q.id)}
                 onDragEnd={() => setDragId(null)}
+                isNew={newId === q.id}
               />
             </div>
           ))}
@@ -573,6 +603,7 @@ function QuestionEditor({
   set,
   onDragStart,
   onDragEnd,
+  isNew,
 }: {
   q: Question;
   no: number;
@@ -582,12 +613,18 @@ function QuestionEditor({
   set: (fn: (s: SurveySpec) => SurveySpec) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
+  isNew: boolean;
 }) {
   const hasError = issues.some((i) => i.level === "error");
   const base = `q-${q.id}`;
   const [bulk, setBulk] = useState(false);
   return (
-    <fieldset className={`rounded-[18px] border bg-surface p-5 ${hasError ? "border-scale-1" : "border-line"}`}>
+    <fieldset
+      id={`card-${q.id}`}
+      className={`rounded-[18px] border border-l-[6px] bg-surface p-5 shadow-sm transition-shadow focus-within:shadow-md ${TYPE_BAR[q.type]} ${
+        hasError ? "border-scale-1 ring-2 ring-scale-1/40" : "border-line-strong focus-within:border-t-ink focus-within:border-r-ink focus-within:border-b-ink"
+      } ${isNew ? "flash-new" : ""}`}
+    >
       <legend className="sr-only">{no}번 문항</legend>
       <div className="flex flex-wrap items-center gap-2">
         <span
@@ -603,11 +640,11 @@ function QuestionEditor({
         >
           ⠿
         </span>
-        <span className="text-[15px] font-bold">{no}.</span>
+        <span className={`grid size-7 place-items-center rounded-full text-[13px] font-bold text-white ${TYPE_BG[q.type]}`}>{no}</span>
         <label htmlFor={`${base}-type`} className="sr-only">
           유형
         </label>
-        <select id={`${base}-type`} value={q.type} onChange={(e) => set((s) => ops.changeType(s, q.id, e.target.value as QuestionType))} className="h-9 rounded-[10px] border border-line bg-surface px-2 text-[13px]">
+        <select id={`${base}-type`} value={q.type} onChange={(e) => set((s) => ops.changeType(s, q.id, e.target.value as QuestionType))} className={`h-9 rounded-[10px] border-2 bg-surface px-2 text-[13px] font-semibold ${TYPE_BORDER[q.type]}`}>
           {(Object.keys(TYPE_LABEL) as QuestionType[]).map((t) => (
             <option key={t} value={t}>
               {TYPE_LABEL[t]}
@@ -654,7 +691,7 @@ function QuestionEditor({
         maxLength={200}
         value={q.text}
         onChange={(e) => set((s) => ops.updateQuestion(s, q.id, { text: e.target.value }))}
-        className="h-11 w-full rounded-[10px] border border-line px-3 text-[15px] focus-visible:outline-3 focus-visible:outline-teal"
+        className="h-11 w-full rounded-[10px] border border-line-strong bg-field px-3 text-[15px] font-medium focus:border-ink focus:bg-surface focus-visible:outline-3 focus-visible:outline-teal"
         placeholder="예: 강사의 진행에 만족하십니까?"
       />
       {isKpi && <p className="mt-1 text-[12px] text-muted-text">대표 문항은 다른 설문과 비교하는 기준이라 표준 문구를 권장함.</p>}
@@ -662,8 +699,8 @@ function QuestionEditor({
       <details className="mt-2 text-[13px]">
         <summary className="cursor-pointer text-muted-text">영역 제목·안내 문구</summary>
         <div className="mt-2 grid gap-2 md:grid-cols-2">
-          <input aria-label="영역 제목" placeholder="영역 제목(선택)" value={q.section ?? ""} onChange={(e) => set((s) => ops.updateQuestion(s, q.id, { section: e.target.value }))} className="h-10 rounded-[10px] border border-line px-3" />
-          <input aria-label="질문 아래 안내" placeholder="질문 아래 안내(선택)" value={q.note ?? ""} onChange={(e) => set((s) => ops.updateQuestion(s, q.id, { note: e.target.value }))} className="h-10 rounded-[10px] border border-line px-3" />
+          <input aria-label="영역 제목" placeholder="영역 제목(선택)" value={q.section ?? ""} onChange={(e) => set((s) => ops.updateQuestion(s, q.id, { section: e.target.value }))} className={`h-10 ${smallField}`} />
+          <input aria-label="질문 아래 안내" placeholder="질문 아래 안내(선택)" value={q.note ?? ""} onChange={(e) => set((s) => ops.updateQuestion(s, q.id, { note: e.target.value }))} className={`h-10 ${smallField}`} />
         </div>
       </details>
 
@@ -704,7 +741,7 @@ function QuestionEditor({
                   const v = e.target.value;
                   set((s) => ops.setOptions(s, q.id, parseOptionLines(v)));
                 }}
-                className="w-full rounded-[10px] border border-line p-3 text-[14px] leading-relaxed"
+                className="w-full rounded-[10px] border border-line-strong bg-field p-3 text-[14px] leading-relaxed focus:border-ink focus:bg-surface"
               />
               <p className="mt-1 text-[12px] text-muted-text">한 줄에 보기 하나. 끝에 (직접입력)을 붙이면 직접 적는 보기가 됨. 엑셀·한글에서 복사해 붙여 넣어도 됨.</p>
             </div>
@@ -720,7 +757,7 @@ function QuestionEditor({
                     const v = e.target.value;
                     set((s) => ops.setOptions(s, q.id, (q.options ?? []).map((x, j) => (j === idx ? { ...x, label: v } : x))));
                   }}
-                  className="h-10 min-w-0 flex-1 rounded-[10px] border border-line px-3"
+                  className={`h-10 min-w-0 flex-1 ${smallField}`}
                 />
                 <label className="flex items-center gap-1 text-[12px]">
                   <input
@@ -772,11 +809,11 @@ function QuestionEditor({
         <div className="mt-3 grid gap-2 md:grid-cols-2">
           <label className="text-[13px]">
             <span className="font-semibold">1점 라벨</span>
-            <input value={q.low ?? ""} disabled={isKpi} onChange={(e) => set((s) => ops.updateQuestion(s, q.id, { low: e.target.value }))} className="mt-1 h-10 w-full rounded-[10px] border border-line px-3 disabled:bg-bg" />
+            <input value={q.low ?? ""} disabled={isKpi} onChange={(e) => set((s) => ops.updateQuestion(s, q.id, { low: e.target.value }))} className={`mt-1 h-10 w-full ${smallField} disabled:bg-bg disabled:text-muted-text`} />
           </label>
           <label className="text-[13px]">
             <span className="font-semibold">5점 라벨</span>
-            <input value={q.high ?? ""} disabled={isKpi} onChange={(e) => set((s) => ops.updateQuestion(s, q.id, { high: e.target.value }))} className="mt-1 h-10 w-full rounded-[10px] border border-line px-3 disabled:bg-bg" />
+            <input value={q.high ?? ""} disabled={isKpi} onChange={(e) => set((s) => ops.updateQuestion(s, q.id, { high: e.target.value }))} className={`mt-1 h-10 w-full ${smallField} disabled:bg-bg disabled:text-muted-text`} />
           </label>
         </div>
       )}

@@ -36,9 +36,9 @@ export default async function SurveyLayout({ children }: { children: React.React
             서
           </span>
           <span className="text-[15px] font-bold leading-tight">
-            서사협
+            만족도 설문
             <br />
-            <span className="text-[12px] font-medium text-muted-text">회원서비스</span>
+            <span className="text-[12px] font-medium text-muted-text">서울특별시사회복지사협회</span>
           </span>
         </Link>
         <SidebarNav role={staff.role} />
@@ -58,7 +58,7 @@ export default async function SurveyLayout({ children }: { children: React.React
               <SidebarNav role={staff.role} />
             </div>
           </details>
-          <p className="hidden text-[13px] text-muted-text lg:block">회원서비스 › 만족도 설문</p>
+          <p className="hidden text-[13px] text-muted-text lg:block">서사협 › 만족도 설문</p>
           <div className="flex items-center gap-2">
             {local && <span className="rounded-full bg-lav px-3 py-1 text-[12px] font-semibold">로컬 더미 데이터</span>}
             <span className="hidden items-center gap-1 rounded-full border border-line px-3 py-1 text-[12px] sm:inline-flex">

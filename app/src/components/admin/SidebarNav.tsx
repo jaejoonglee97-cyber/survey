@@ -21,7 +21,7 @@ export function SidebarNav({ role }: { role: Role }) {
   const path = usePathname() ?? "";
   return (
     <nav aria-label="만족도 설문 메뉴">
-      <p className="px-3 pb-2 pt-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-text">만족도 설문</p>
+      <p className="px-3 pb-2 pt-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-text">메뉴</p>
       <ul className="space-y-1">
         {ITEMS.filter((i) => role === "admin" || !i.adminOnly).map((i) => {
           const active = isActive(path, i.href);
