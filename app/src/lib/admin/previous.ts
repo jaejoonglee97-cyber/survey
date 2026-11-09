@@ -10,6 +10,7 @@ export async function loadPreviousSurveys(excludeId?: string): Promise<PreviousS
     .map((s) => ({
       id: s.id,
       title: s.spec.title,
+      category: s.spec.category,
       program: s.spec.program,
       year: s.spec.year,
       intro: s.spec.intro,

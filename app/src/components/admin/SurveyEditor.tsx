@@ -15,6 +15,11 @@ import {
   type QuestionType,
   type SurveySpec,
 } from "@/lib/survey-core";
+import { addFromBank, applyTemplate, OPTION_PRESETS, optionsToLines, parseOptionLines } from "@/lib/admin/question-bank";
+import { toPublicSurvey } from "@/lib/survey-core";
+import { SurveyForm } from "../respond/SurveyForm";
+import { QuestionBank } from "./QuestionBank";
+import { StartChooser } from "./StartChooser";
 import { buttonCls } from "./ui";
 
 // 문항 편집기(AI 설계 대신). 점검은 서버와 같은 규칙(survey-core)을 화면에서도 바로 보여 주고,
@@ -23,6 +28,7 @@ import { buttonCls } from "./ui";
 export interface PreviousSurvey {
   id: string;
   title: string;
+  category: string;
   program: string;
   year: number;
   intro: string;
@@ -45,6 +51,12 @@ export function SurveyEditor({ id: initialId, initial, previous }: { id: string 
   const [mdText, setMdText] = useState("");
   const [mdFileName, setMdFileName] = useState("");
   const [pick, setPick] = useState(0);
+  // 새 설문은 먼저 시작 방법을 고름(저장된 초안은 바로 편집)
+  const [started, setStarted] = useState(initialId !== null);
+  const [bankOpen, setBankOpen] = useState(false);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const previewRef = useRef<HTMLDialogElement>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [pending, start] = useTransition();
   const publishRef = useRef<HTMLDialogElement>(null);
   const router = useRouter();
@@ -115,6 +127,27 @@ export function SurveyEditor({ id: initialId, initial, previous }: { id: string 
   }
 
   const minutes = Math.max(1, Math.round(report.estimatedSeconds / 60));
+
+  if (!started) {
+    return (
+      <StartChooser
+        previous={previous}
+        onTemplate={(t) => {
+          setSpec((s) => applyTemplate(s, t));
+          setStarted(true);
+        }}
+        onCopy={(p) => {
+          setSpec((s) => ({ ...ops.copyQuestionsFrom(s, p), program: p.program, category: p.category }));
+          setStarted(true);
+          setMsg({ kind: "ok", text: `'${p.title}'의 문항을 가져옴. 제목·링크 주소·마감일을 정할 것.` });
+        }}
+        onFile={() => {
+          setStarted(true);
+          setMdOpen(true);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
@@ -239,10 +272,26 @@ export function SurveyEditor({ id: initialId, initial, previous }: { id: string 
             <h2 id="questions-h" className="text-[17px] font-bold">
               문항 <span className="text-muted-text">{spec.questions.length}개</span>
             </h2>
-            <button type="button" className={buttonCls.ghost} onClick={() => setMdOpen((v) => !v)} aria-expanded={mdOpen}>
-              파일에서 문항 가져오기
-            </button>
+            <span className="flex flex-wrap gap-2">
+              <button type="button" className={buttonCls.lime} onClick={() => setBankOpen((v) => !v)} aria-expanded={bankOpen}>
+                문항 은행
+              </button>
+              <button type="button" className={buttonCls.ghost} onClick={() => setMdOpen((v) => !v)} aria-expanded={mdOpen}>
+                파일에서 문항 가져오기
+              </button>
+            </span>
           </div>
+
+          {bankOpen && (
+            <QuestionBank
+              spec={spec}
+              onAdd={(item) => {
+                set((s) => addFromBank(s, item));
+                setMsg({ kind: "ok", text: `'${item.kpi ? "대표 만족도" : item.text}' 문항을 맨 아래에 추가함` });
+              }}
+              onClose={() => setBankOpen(false)}
+            />
+          )}
 
           {mdOpen && (
             <div className="rounded-[18px] border border-dashed border-ink bg-surface p-5">
@@ -350,15 +399,29 @@ export function SurveyEditor({ id: initialId, initial, previous }: { id: string 
           )}
 
           {spec.questions.map((q, i) => (
-            <QuestionEditor
+            <div
               key={q.id}
-              q={q}
-              no={i + 1}
-              total={spec.questions.length}
-              isKpi={spec.kpiQuestionId === q.id}
-              issues={byQuestion.get(q.id) ?? []}
-              set={set}
-            />
+              onDragOver={(e) => {
+                if (dragId) e.preventDefault();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (dragId) set((s2) => ops.moveQuestionTo(s2, dragId, i));
+                setDragId(null);
+              }}
+              className={dragId && dragId !== q.id ? "rounded-[18px] outline-dashed outline-2 outline-offset-2 outline-line" : ""}
+            >
+              <QuestionEditor
+                q={q}
+                no={i + 1}
+                total={spec.questions.length}
+                isKpi={spec.kpiQuestionId === q.id}
+                issues={byQuestion.get(q.id) ?? []}
+                set={set}
+                onDragStart={() => setDragId(q.id)}
+                onDragEnd={() => setDragId(null)}
+              />
+            </div>
           ))}
           <div className="flex flex-wrap gap-2 rounded-[18px] border border-dashed border-line p-4">
             <span className="self-center text-[13px] font-semibold">문항 추가:</span>
@@ -400,6 +463,16 @@ export function SurveyEditor({ id: initialId, initial, previous }: { id: string 
           )}
 
           <div className="mt-4 grid gap-2">
+            <button
+              type="button"
+              className={buttonCls.ghost}
+              onClick={() => {
+                setPreviewOpen(true);
+                requestAnimationFrame(() => previewRef.current?.showModal());
+              }}
+            >
+              응답 화면 미리보기
+            </button>
             <button type="button" className={buttonCls.lime} disabled={pending || (!!id && !dirty)} onClick={() => save()}>
               {pending ? "처리 중" : dirty || !id ? "초안 저장" : "저장됨"}
             </button>
@@ -436,6 +509,23 @@ export function SurveyEditor({ id: initialId, initial, previous }: { id: string 
           <p className="mt-3 text-[12px] text-muted-text">게시하면 문항을 바꿀 수 없음(응답과 어긋나지 않게). 서술 문항이 있으면 개인정보 기재 금지 안내가 자동으로 들어감.</p>
         </div>
       </aside>
+
+      <dialog
+        ref={previewRef}
+        onClose={() => setPreviewOpen(false)}
+        aria-label="응답 화면 미리보기"
+        className="m-auto h-[min(92vh,820px)] w-[min(96vw,420px)] overflow-hidden rounded-[24px] border-4 border-ink bg-bg p-0 backdrop:bg-ink/50"
+      >
+        <div className="flex items-center justify-between border-b border-line bg-surface px-4 py-2">
+          <p className="text-[13px] font-bold">미리보기 · 휴대전화 화면</p>
+          <button type="button" className="h-8 rounded-[8px] border border-line px-3 text-[13px]" onClick={() => previewRef.current?.close()}>
+            닫기
+          </button>
+        </div>
+        <div className="h-[calc(100%-45px)] overflow-y-auto">
+          {previewOpen && <SurveyForm preview slug="preview" survey={toPublicSurvey(applyAutoFixes(tidy))} />}
+        </div>
+      </dialog>
 
       <dialog ref={publishRef} className="m-auto w-[min(92vw,460px)] rounded-[18px] border border-line bg-surface p-6 backdrop:bg-ink/40">
         <h2 className="text-[17px] font-bold">게시할까요?</h2>
@@ -481,6 +571,8 @@ function QuestionEditor({
   isKpi,
   issues,
   set,
+  onDragStart,
+  onDragEnd,
 }: {
   q: Question;
   no: number;
@@ -488,13 +580,29 @@ function QuestionEditor({
   isKpi: boolean;
   issues: Issue[];
   set: (fn: (s: SurveySpec) => SurveySpec) => void;
+  onDragStart: () => void;
+  onDragEnd: () => void;
 }) {
   const hasError = issues.some((i) => i.level === "error");
   const base = `q-${q.id}`;
+  const [bulk, setBulk] = useState(false);
   return (
     <fieldset className={`rounded-[18px] border bg-surface p-5 ${hasError ? "border-scale-1" : "border-line"}`}>
       <legend className="sr-only">{no}번 문항</legend>
       <div className="flex flex-wrap items-center gap-2">
+        <span
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.effectAllowed = "move";
+            onDragStart();
+          }}
+          onDragEnd={onDragEnd}
+          title="끌어서 순서 바꾸기"
+          aria-hidden="true"
+          className="cursor-grab select-none rounded-[8px] px-1 text-[18px] leading-none text-muted-text active:cursor-grabbing"
+        >
+          ⠿
+        </span>
         <span className="text-[15px] font-bold">{no}.</span>
         <label htmlFor={`${base}-type`} className="sr-only">
           유형
@@ -561,7 +669,46 @@ function QuestionEditor({
 
       {(q.type === "single" || q.type === "multi") && (
         <div className="mt-3">
-          <p className="text-[13px] font-semibold">보기</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-[13px] font-semibold">보기</p>
+            <button type="button" className="h-8 rounded-full border border-line px-3 text-[12px]" aria-pressed={bulk} onClick={() => setBulk((v) => !v)}>
+              {bulk ? "하나씩 입력" : "한꺼번에 입력"}
+            </button>
+            <label className="sr-only" htmlFor={`${base}-preset`}>
+              보기 세트
+            </label>
+            <select
+              id={`${base}-preset`}
+              value=""
+              onChange={(e) => {
+                const p = OPTION_PRESETS.find((x) => x.name === e.target.value);
+                if (p) set((s) => ops.setOptions(s, q.id, p.options));
+              }}
+              className="h-8 rounded-full border border-line bg-surface px-2 text-[12px]"
+            >
+              <option value="">보기 세트 넣기…</option>
+              {OPTION_PRESETS.map((p) => (
+                <option key={p.name} value={p.name}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          {bulk ? (
+            <div className="mt-2">
+              <textarea
+                aria-label={`${no}번 문항 보기(한 줄에 하나)`}
+                rows={Math.max(4, (q.options ?? []).length + 1)}
+                defaultValue={optionsToLines(q.options)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  set((s) => ops.setOptions(s, q.id, parseOptionLines(v)));
+                }}
+                className="w-full rounded-[10px] border border-line p-3 text-[14px] leading-relaxed"
+              />
+              <p className="mt-1 text-[12px] text-muted-text">한 줄에 보기 하나. 끝에 (직접입력)을 붙이면 직접 적는 보기가 됨. 엑셀·한글에서 복사해 붙여 넣어도 됨.</p>
+            </div>
+          ) : (
           <ul className="mt-1 space-y-2">
             {(q.options ?? []).map((o, idx) => (
               <li key={idx} className="flex flex-wrap items-center gap-2">
@@ -598,6 +745,7 @@ function QuestionEditor({
               </li>
             ))}
           </ul>
+          )}
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <button type="button" className="h-9 rounded-[10px] border border-line px-3 text-[13px]" onClick={() => set((s) => ops.setOptions(s, q.id, [...(q.options ?? []), { label: "" }]))}>
               + 보기

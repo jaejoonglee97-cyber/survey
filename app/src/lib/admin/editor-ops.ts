@@ -98,6 +98,18 @@ export function moveQuestion(spec: SurveySpec, id: string, delta: -1 | 1): Surve
   return { ...spec, questions: qs };
 }
 
+/** 끌어서 놓기: 문항을 to 위치(0부터)로 옮김 */
+export function moveQuestionTo(spec: SurveySpec, id: string, to: number): SurveySpec {
+  const i = spec.questions.findIndex((q) => q.id === id);
+  if (i < 0) return spec;
+  const j = Math.max(0, Math.min(spec.questions.length - 1, to));
+  if (i === j) return spec;
+  const qs = [...spec.questions];
+  const [q] = qs.splice(i, 1);
+  qs.splice(j, 0, q);
+  return { ...spec, questions: qs };
+}
+
 /** 대표 만족도 문항 지정: 5점 문항만, 문구·라벨을 표준으로 맞춤 */
 export function setKpi(spec: SurveySpec, id: string): SurveySpec {
   const q = spec.questions.find((x) => x.id === id);

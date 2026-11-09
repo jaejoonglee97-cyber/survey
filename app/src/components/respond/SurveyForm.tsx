@@ -21,7 +21,8 @@ type Phase = { kind: "form" } | { kind: "sending" } | { kind: "done" } | { kind:
 
 const doneKey = (slug: string) => `survey_done_${slug}`;
 
-export function SurveyForm({ slug, survey }: { slug: string; survey: PublicSurvey }) {
+/** preview: 담당자 편집기의 미리보기(제출·기기 기록 없이 검증만 함) */
+export function SurveyForm({ slug, survey, preview = false }: { slug: string; survey: PublicSurvey; preview?: boolean }) {
   const [state, setState] = useState<FormState>(() => initialFormState(survey.questions));
   const [errors, setErrors] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState("");
@@ -31,11 +32,11 @@ export function SurveyForm({ slug, survey }: { slug: string; survey: PublicSurve
 
   useEffect(() => {
     try {
-      setDoneBefore(!!localStorage.getItem(doneKey(slug)));
+      if (!preview) setDoneBefore(!!localStorage.getItem(doneKey(slug)));
     } catch {
       /* 저장소를 못 쓰는 브라우저는 안내 생략 */
     }
-  }, [slug]);
+  }, [slug, preview]);
 
   const total = survey.questions.length;
   const answered = useMemo(() => answeredCount(survey.questions, state), [survey.questions, state]);
@@ -63,6 +64,11 @@ export function SurveyForm({ slug, survey }: { slug: string; survey: PublicSurve
     }
     setErrors(new Set());
     setMessage("");
+    if (preview) {
+      setMessage("미리보기라 실제로 제출되지는 않음. 응답 형식은 올바름.");
+      msgRef.current?.focus();
+      return;
+    }
     setPhase({ kind: "sending" });
     try {
       const res = await fetch(`/api/s/${encodeURIComponent(slug)}/submit`, {
