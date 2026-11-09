@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+  :root {
+    --bg: #f4f6f8; --surface: #ffffff; --ink: #1c2733; --muted: #5d6b79;
+    --line: #d5dce3; --accent: #146c5f; --accent-ink: #ffffff; --accent-soft: #e2f0ed;
+    --danger: #b3261e; --danger-soft: #fbe9e7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12171c; --surface: #1a2128; --ink: #e8edf1; --muted: #9aa8b5;
+      --line: #2e3944; --accent: #4fb8a6; --accent-ink: #0c1a17; --accent-soft: #18332e;
+      --danger: #ff8a80; --danger-soft: #3a1f1c;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", "Segoe UI", sans-serif;
+  }
+  .bar { position: sticky; top: 0; z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .bar-in { max-width: 640px; margin: 0 auto; padding: 8px 16px; display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); }
+  .track { flex: 1; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .fill { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  @media (prefers-reduced-motion: reduce) { .fill { transition: none; } }
+  main { max-width: 640px; margin: 0 auto; padding: 24px 16px 96px; }
+  h1 { font-size: 24px; line-height: 1.35; margin: 8px 0 12px; letter-spacing: -0.01em; }
+  .meta { font-size: 14px; color: var(--muted); margin: 0 0 8px; }
+  .intro { white-space: pre-line; margin: 16px 0 8px; padding: 14px 16px; background: var(--surface); border-left: 4px solid var(--accent); }
+  .notice { margin: 12px 0; padding: 10px 14px; background: var(--accent-soft); font-size: 14px; }
+  h2 { font-size: 15px; color: var(--accent); margin: 36px 0 0; padding-bottom: 6px; border-bottom: 2px solid var(--accent); }
+  fieldset.q { border: 0; border-bottom: 1px solid var(--line); margin: 0; padding: 24px 0 22px; min-width: 0; }
+  fieldset.q.err { background: var(--danger-soft); margin: 0 -12px; padding-left: 12px; padding-right: 12px; }
+  legend { padding: 0; font-weight: 600; font-size: 17px; line-height: 1.5; }
+  legend .no { color: var(--accent); margin-right: 6px; }
+  legend .req { font-weight: 400; font-size: 13px; color: var(--danger); margin-left: 6px; }
+  .hint { font-size: 13px; color: var(--muted); margin: 4px 0 10px; }
+  .optwrap { margin-top: 8px; }
+  label.opt {
+    display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 10px 14px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px; cursor: pointer;
+  }
+  label.opt:hover { border-color: var(--accent); }
+  label.opt:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+  label.opt input { width: 20px; height: 20px; accent-color: var(--accent); flex: none; margin: 0; }
+  label.opt:has(input:disabled) { opacity: .5; cursor: not-allowed; }
+  input.other, textarea {
+    width: 100%; margin-top: 8px; padding: 10px 12px; font: inherit; color: var(--ink);
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+  }
+  textarea { min-height: 112px; resize: vertical; margin-top: 10px; }
+  .count { font-size: 12px; color: var(--muted); text-align: right; }
+  .scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 10px; }
+  .scale label {
+    display: flex; align-items: center; justify-content: center; min-height: 52px; font-size: 18px; font-weight: 600;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; position: relative;
+  }
+  .scale label:hover { border-color: var(--accent); }
+  .scale label:has(input:checked) { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .scale input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .scale label:has(input:focus-visible), label.opt:has(input:focus-visible) { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .ends { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-top: 6px; }
+  textarea:focus-visible, input.other:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .msg { margin: 20px 0 0; padding: 12px 14px; background: var(--danger-soft); color: var(--danger); border-radius: 8px; font-size: 14px; }
+  button.submit {
+    display: block; width: 100%; margin-top: 28px; min-height: 54px; font: inherit; font-weight: 700; font-size: 17px;
+    background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 10px; cursor: pointer;
+  }
+  button.submit:disabled { opacity: .6; cursor: wait; }
+  .state { text-align: center; padding: 72px 8px; }
+  .state h1 { margin-bottom: 8px; }
+  .state p { color: var(--muted); margin: 4px 0; }
+  .link { background: none; border: 0; color: var(--accent); text-decoration: underline; font: inherit; cursor: pointer; padding: 0; }
+</style>
+</head>
+<body data-slug="<?= slug ?>">
+<div class="bar" id="bar" hidden><div class="bar-in"><span id="progText"></span><div class="track"><div class="fill" id="fill"></div></div></div></div>
+<main id="app"><div class="state"><p>설문을 불러오는 중입니다.</p></div></main>
+
+<script>
+(function () {
+  'use strict';
+  var slug = document.body.getAttribute('data-slug') || '';
+  var root = document.getElementById('app');
+  var bar = document.getElementById('bar');
+  var survey = null;
+  var doneKey = 'hc_done_' + slug;
+
+  function el(tag, props, kids) {
+    var n = document.createElement(tag);
+    if (props) for (var k in props) {
+      if (k === 'class') n.className = props[k];
+      else if (k === 'text') n.textContent = props[k];
+      else if (k.slice(0, 2) === 'on') n.addEventListener(k.slice(2), props[k]);
+      else n.setAttribute(k, props[k]);
+    }
+    (kids || []).forEach(function (c) { if (c != null) n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+    return n;
+  }
+  function clear() { while (root.firstChild) root.removeChild(root.firstChild); }
+  function stateView(title, lines) {
+    bar.hidden = true;
+    clear();
+    root.appendChild(el('div', { class: 'state' }, [el('h1', { text: title })].concat(lines.map(function (t) { return el('p', { text: t }); }))));
+  }
+  function hasDone() { try { return !!localStorage.getItem(doneKey); } catch (e) { return false; } }
+  function markDone() { try { localStorage.setItem(doneKey, '1'); } catch (e) {} }
+
+  function load() {
+    if (!slug) { stateView('설문을 찾을 수 없습니다', ['안내받은 링크를 다시 확인해 주세요.']); return; }
+    google.script.run
+      .withSuccessHandler(function (s) {
+        if (!s || s.state === 'notfound') stateView('설문을 찾을 수 없습니다', ['안내받은 링크를 다시 확인해 주세요.']);
+        else if (s.state === 'closed') stateView('마감된 설문입니다', [s.title || '', '마감: ' + (s.deadline || '')]);
+        else { survey = s; render(); }
+      })
+      .withFailureHandler(function () { stateView('불러오지 못했습니다', ['잠시 후 다시 접속해 주세요.']); })
+      .getSurvey(slug);
+  }
+
+  function render() {
+    clear();
+    document.title = survey.title;
+    root.appendChild(el('h1', { text: survey.title }));
+    root.appendChild(el('p', { class: 'meta', text: '마감 ' + survey.deadline + ' · 문항 ' + survey.questions.length + '개 · 무기명' }));
+    if (survey.intro) root.appendChild(el('div', { class: 'intro', text: survey.intro }));
+    if (hasDone()) root.appendChild(el('div', { class: 'notice', text: '이 기기에서 이미 제출한 기록이 있습니다. 이미 응답하셨다면 이 화면을 닫아 주세요.' }));
+
+    var lastSection = null;
+    survey.questions.forEach(function (q, qi) {
+      if (q.section && q.section !== lastSection) { root.appendChild(el('h2', { text: q.section })); lastSection = q.section; }
+      root.appendChild(buildQuestion(q, qi + 1));
+    });
+
+    var msg = el('div', { class: 'msg', id: 'msg', role: 'alert', hidden: 'hidden' });
+    var btn = el('button', { class: 'submit', type: 'button', id: 'submitBtn', text: '제출하기', onclick: submit });
+    root.appendChild(msg);
+    root.appendChild(btn);
+    root.addEventListener('input', updateProgress);
+    root.addEventListener('change', updateProgress);
+    bar.hidden = false;
+    updateProgress();
+  }
+
+  function buildQuestion(q, no) {
+    var fs = el('fieldset', { class: 'q', id: 'q-' + q.id });
+    var lg = el('legend', null, [el('span', { class: 'no', text: no + '.' }), q.text]);
+    if (q.required) lg.appendChild(el('span', { class: 'req', text: '필수' }));
+    fs.appendChild(lg);
+    if (q.note) fs.appendChild(el('div', { class: 'hint', text: q.note }));
+
+    if (q.type === 'single' || q.type === 'multi') {
+      if (q.type === 'multi') fs.appendChild(el('div', { class: 'hint', text: q.max ? '최대 ' + q.max + '개까지 선택할 수 있습니다.' : '해당하는 것을 모두 선택해 주세요.' }));
+      q.options.forEach(function (o, idx) {
+        var wrap = el('div', { class: 'optwrap' });
+        var input = el('input', { type: q.type === 'single' ? 'radio' : 'checkbox', name: q.id, 'data-idx': String(idx) });
+        wrap.appendChild(el('label', { class: 'opt' }, [input, el('span', { text: o.label })]));
+        if (o.other) {
+          var t = el('input', { type: 'text', class: 'other', maxlength: '200', placeholder: '직접 입력', 'aria-label': o.label + ' 내용', hidden: 'hidden' });
+          wrap.appendChild(t);
+          input.addEventListener('change', function () { syncOther(fs, q); });
+        }
+        fs.appendChild(wrap);
+      });
+      fs.addEventListener('change', function () { syncOther(fs, q); if (q.type === 'multi' && q.max) limitMulti(fs, q); });
+    } else if (q.type === 'scale5') {
+      var sc = el('div', { class: 'scale', role: 'radiogroup', 'aria-label': q.text });
+      for (var v = 1; v <= 5; v++) {
+        sc.appendChild(el('label', null, [el('input', { type: 'radio', name: q.id, value: String(v), 'aria-label': v + '점' }), String(v)]));
+      }
+      fs.appendChild(sc);
+      fs.appendChild(el('div', { class: 'ends' }, [el('span', { text: '1 ' + q.low }), el('span', { text: '5 ' + q.high })]));
+    } else {
+      var ta = el('textarea', { maxlength: '1000', 'aria-label': q.text });
+      var cnt = el('div', { class: 'count', text: '0 / 1000' });
+      ta.addEventListener('input', function () { cnt.textContent = ta.value.length + ' / 1000'; });
+      fs.appendChild(ta);
+      fs.appendChild(cnt);
+    }
+    return fs;
+  }
+
+  function syncOther(fs, q) {
+    var wraps = fs.querySelectorAll('.optwrap');
+    for (var i = 0; i < wraps.length; i++) {
+      var t = wraps[i].querySelector('input.other');
+      if (!t) continue;
+      var on = wraps[i].querySelector('input[data-idx]').checked;
+      t.hidden = !on;
+    }
+  }
+  function limitMulti(fs, q) {
+    var boxes = fs.querySelectorAll('input[type=checkbox]');
+    var n = 0, i;
+    for (i = 0; i < boxes.length; i++) if (boxes[i].checked) n++;
+    for (i = 0; i < boxes.length; i++) boxes[i].disabled = !boxes[i].checked && n >= q.max;
+  }
+
+  /** 문항 하나의 응답을 읽음. 미응답은 null, 직접입력 누락은 {bad:true}. */
+  function readAnswer(q) {
+    var box = document.getElementById('q-' + q.id);
+    if (q.type === 'text') { var v = box.querySelector('textarea').value.trim(); return v ? v : null; }
+    if (q.type === 'scale5') { var c = box.querySelector('input:checked'); return c ? Number(c.value) : null; }
+    var checked = box.querySelectorAll('input[data-idx]:checked');
+    if (!checked.length) return null;
+    var vals = [];
+    for (var i = 0; i < checked.length; i++) {
+      var o = q.options[Number(checked[i].getAttribute('data-idx'))];
+      if (o.other) {
+        var tx = checked[i].closest('.optwrap').querySelector('input.other').value.trim();
+        if (!tx) return { bad: true };
+        vals.push(o.label + ': ' + tx);
+      } else vals.push(o.label);
+    }
+    return q.type === 'single' ? vals[0] : vals;
+  }
+
+  function updateProgress() {
+    if (!survey) return;
+    var n = 0;
+    survey.questions.forEach(function (q) { var a = readAnswer(q); if (a !== null && !(a && a.bad)) n++; });
+    var total = survey.questions.length;
+    document.getElementById('progText').textContent = n + ' / ' + total;
+    document.getElementById('fill').style.width = (total ? Math.round(n / total * 100) : 0) + '%';
+  }
+
+  function showMsg(t) {
+    var m = document.getElementById('msg');
+    m.textContent = t; m.hidden = false;
+  }
+
+  function submit() {
+    var answers = {}, first = null, problem = '';
+    survey.questions.forEach(function (q) {
+      var box = document.getElementById('q-' + q.id);
+      box.classList.remove('err');
+      var a = readAnswer(q);
+      var bad = false;
+      if (a && a.bad) { bad = true; problem = problem || '‘직접 입력’을 선택한 문항은 내용을 적어 주세요.'; }
+      else if (a === null && q.required) { bad = true; problem = problem || '필수 문항에 응답해 주세요.'; }
+      if (bad) { box.classList.add('err'); if (!first) first = box; }
+      else if (a !== null) answers[q.id] = a;
+    });
+    if (first) {
+      showMsg(problem);
+      first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    var btn = document.getElementById('submitBtn');
+    btn.disabled = true; btn.textContent = '제출 중입니다';
+    google.script.run
+      .withSuccessHandler(function (res) {
+        if (res && res.ok) { markDone(); stateView('응답해 주셔서 감사합니다', ['제출이 완료되었습니다. 이 화면을 닫으셔도 됩니다.']); window.scrollTo(0, 0); }
+        else if (res && res.closed) stateView('마감된 설문입니다', ['제출 직전에 마감되었습니다.']);
+        else { btn.disabled = false; btn.textContent = '제출하기'; showMsg((res && res.message) || '제출하지 못했습니다. 다시 시도해 주세요.'); }
+      })
+      .withFailureHandler(function () {
+        btn.disabled = false; btn.textContent = '제출하기';
+        showMsg('제출하지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요. 입력한 내용은 유지됩니다.');
+      })
+      .submitResponse(slug, answers);
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>

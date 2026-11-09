@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+  /* 설계 메모: 모든 비교를 같은 1~5점 '눈금자' 위에 올려 길이가 곧 점수가 되게 함.
+     색은 낮은 점수(주황)에서 높은 점수(청록)로 이어지는 하나의 띠로만 사용함. */
+  :root {
+    --bg: #f4f6f8; --surface: #ffffff; --ink: #1c2733; --muted: #5d6b79; --line: #d5dce3;
+    --accent: #146c5f; --accent-ink: #ffffff; --accent-soft: #e2f0ed;
+    --s1: #c4553f; --s2: #e59a66; --s3: #d8d6cc; --s4: #86bfb2; --s5: #146c5f;
+    --danger: #b3261e; --danger-soft: #fbe9e7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12171c; --surface: #1a2128; --ink: #e8edf1; --muted: #9aa8b5; --line: #2e3944;
+      --accent: #4fb8a6; --accent-ink: #0c1a17; --accent-soft: #18332e;
+      --s1: #e0705a; --s2: #e8a878; --s3: #56616c; --s4: #3f9a8a; --s5: #4fb8a6;
+      --danger: #ff8a80; --danger-soft: #3a1f1c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", "Segoe UI", sans-serif; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+  header { background: var(--surface); border-bottom: 1px solid var(--line); }
+  header .wrap { padding-top: 20px; padding-bottom: 16px; }
+  h1 { font-size: 24px; line-height: 1.3; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { margin: 0; color: var(--muted); font-size: 13px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; }
+  select, input[type=password] { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; min-height: 40px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  button.chip, button.b { font: inherit; min-height: 40px; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+  button.chip[aria-pressed=true] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+  button.b { border-radius: 6px; }
+  button.b.main { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  main { padding: 24px 0 72px; }
+  section { margin-bottom: 36px; }
+  h2 { font-size: 17px; margin: 0 0 4px; }
+  .lead { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin: 0 0 28px; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--line); }
+  .stats div { padding: 12px 14px 12px 0; }
+  .stats dt { font-size: 12px; color: var(--muted); margin: 0; }
+  .stats dd { margin: 0; font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .stats dd small { font-size: 13px; font-weight: 400; color: var(--muted); margin-left: 3px; }
+
+  /* 눈금자 */
+  .ruler { position: relative; padding-top: 30px; }
+  .ruler .track { position: relative; height: 14px; border-radius: 7px;
+    background: linear-gradient(90deg, var(--s1), var(--s2), var(--s3), var(--s4), var(--s5)); opacity: .55; }
+  .ruler .dot { position: absolute; top: 24px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+  .ruler .dot .val { font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; line-height: 1; margin-bottom: 3px; background: var(--ink); color: var(--bg); padding: 3px 7px; border-radius: 4px; }
+  .ruler .dot i { display: block; width: 4px; height: 22px; background: var(--ink); border-radius: 2px; }
+  .ruler .dot.el { transform: translateX(-12%); align-items: flex-start; }
+  .ruler .dot.er { transform: translateX(-88%); align-items: flex-end; }
+  .ruler .dot.el i { margin-left: 8px; } .ruler .dot.er i { margin-right: 8px; }
+  .ticks { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .ruler.hero { padding-top: 38px; } .ruler.hero .track { height: 20px; border-radius: 10px; } .ruler.hero .dot { top: 28px; } .ruler.hero .dot .val { font-size: 20px; padding: 4px 10px; } .ruler.hero .dot i { height: 30px; }
+
+  .catrow { display: grid; grid-template-columns: 140px 1fr 170px; gap: 14px; align-items: end; padding: 12px 0; border-top: 1px solid var(--line); }
+  .catrow:first-of-type { border-top: 0; }
+  .catrow .nm { font-weight: 600; overflow-wrap: anywhere; }
+  .catrow .ft { font-size: 13px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+
+  .row { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-bottom: 12px; display: grid; grid-template-columns: minmax(180px, 32%) 1fr; gap: 8px 24px; }
+  .row h3 { font-size: 16px; margin: 0 0 4px; overflow-wrap: anywhere; }
+  .meta { margin: 0; font-size: 13px; color: var(--muted); }
+  .tag { display: inline-block; font-size: 12px; padding: 0 8px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); font-weight: 700; margin-left: 4px; }
+  .tag.closed { background: var(--line); color: var(--muted); }
+  .stack { display: flex; height: 22px; border-radius: 4px; overflow: hidden; margin-top: 14px; background: var(--line); }
+  .stack span { display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; min-width: 0; overflow: hidden; }
+  .stack span.l3 { color: var(--ink); }
+  .legend { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .facts { margin: 8px 0 0; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .hidden-note { margin: 0; padding: 14px; background: var(--bg); border: 1px dashed var(--line); border-radius: 6px; color: var(--muted); font-size: 13px; align-self: center; }
+
+  .trends { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 12px; }
+  .trend { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 14px 10px; }
+  .trend h3 { font-size: 15px; margin: 0; overflow-wrap: anywhere; }
+  .trend .d { font-size: 13px; color: var(--muted); margin: 0 0 4px; }
+  .trend .d b { color: var(--ink); }
+  .trend svg { width: 100%; height: auto; display: block; }
+  .trend svg .ln { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
+  .trend svg .pt { fill: var(--surface); stroke: var(--ink); stroke-width: 2; }
+  .trend svg .pt.last { fill: var(--ink); }
+  .trend svg text { fill: var(--muted); font-size: 11px; text-anchor: middle; font-variant-numeric: tabular-nums; }
+  .trend svg text.v { fill: var(--ink); font-weight: 700; font-size: 12px; }
+
+  .empty, .msg { padding: 28px 16px; text-align: center; color: var(--muted); background: var(--surface); border: 1px dashed var(--line); border-radius: 8px; }
+  .msg.err { color: var(--danger); background: var(--danger-soft); border-style: solid; border-color: transparent; }
+  .gate { max-width: 420px; margin: 80px auto; padding: 0 16px; }
+  .gate .box { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 20px; }
+  .gate .r { display: flex; gap: 8px; margin-top: 12px; }
+  .gate input { flex: 1; min-width: 0; }
+  footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); padding-top: 14px; }
+
+  @media (max-width: 720px) {
+    h1 { font-size: 21px; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .stats div:nth-child(n+3) { border-top: 1px solid var(--line); }
+    .catrow { grid-template-columns: 1fr; gap: 0; }
+    .catrow .ft { text-align: left; margin-top: 6px; }
+    .row { grid-template-columns: 1fr; }
+  }
+  @media print {
+    body { background: #fff; color: #000; } header { border: 0; } .controls, #refresh { display: none; }
+    .row, .trend { break-inside: avoid; } .ruler .track { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+<div class="gate" id="gate">
+  <div class="box">
+    <h1>만족도 대시보드</h1>
+    <p class="sub">열람 키를 입력해 주세요. 열람 키로는 집계 결과만 볼 수 있음.</p>
+    <div class="r"><input type="password" id="key" autocomplete="off" aria-label="열람 키"><button class="b main" id="go" type="button">확인</button></div>
+    <div id="gateMsg" role="alert"></div>
+  </div>
+</div>
+
+<div id="app" hidden>
+  <header><div class="wrap">
+    <h1>협회 사업·행사 만족도</h1>
+    <p class="sub">설문마다 지정한 ‘대표 만족도’ 문항(5점 만점) 기준임. 응답이 5건 미만인 설문은 수치를 표시하지 않음.</p>
+    <div class="controls">
+      <label class="sub" for="year">연도</label><select id="year"></select>
+      <div class="chips" id="cats" role="group" aria-label="분류 선택"></div>
+      <button class="b" id="refresh" type="button">새로고침</button>
+    </div>
+  </div></header>
+  <main class="wrap" id="out" aria-live="polite"></main>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var KEY = '', DATA = null, F = { year: 'all', cat: 'all' };
+  var $ = function (id) { return document.getElementById(id); };
+
+  function el(tag, props, kids) {
+    var n = document.createElement(tag);
+    if (props) for (var k in props) {
+      if (k === 'class') n.className = props[k];
+      else if (k === 'text') n.textContent = props[k];
+      else if (k.slice(0, 2) === 'on') n.addEventListener(k.slice(2), props[k]);
+      else n.setAttribute(k, props[k]);
+    }
+    (kids || []).forEach(function (c) { if (c != null) n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+    return n;
+  }
+  function svg(tag, attrs, text) {
+    var n = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
+  function fmt1(x) { return (Math.round(x * 10) / 10).toFixed(1); }
+  function sum(a) { return a.reduce(function (s, v) { return s + v; }, 0); }
+  function sumDist(rows) {
+    var d = [0, 0, 0, 0, 0];
+    rows.forEach(function (r) { if (r.dist) r.dist.forEach(function (v, i) { d[i] += v; }); });
+    return d;
+  }
+  function meanOf(d) { var n = sum(d); return n ? (d[0] + 2 * d[1] + 3 * d[2] + 4 * d[3] + 5 * d[4]) / n : null; }
+  function posOf(d) { var n = sum(d); return n ? (d[3] + d[4]) / n * 100 : null; }
+  function uniq(a) { var o = {}; a.forEach(function (v) { o[v] = 1; }); return Object.keys(o); }
+
+  /* 로그인 */
+  function go() {
+    var k = $('key').value.trim();
+    $('go').disabled = true; clear($('gateMsg'));
+    KEY = k;
+    load(false, function (err) {
+      $('go').disabled = false;
+      if (err) { KEY = ''; $('gateMsg').appendChild(el('div', { class: 'msg err', text: err })); return; }
+      $('gate').hidden = true; $('app').hidden = false;
+    });
+  }
+  $('go').addEventListener('click', go);
+  $('key').addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
+  $('refresh').addEventListener('click', function () { load(true); });
+
+  function load(force, done) {
+    google.script.run
+      .withSuccessHandler(function (d) { DATA = d; build(); render(); if (done) done(null); })
+      .withFailureHandler(function (e) {
+        var m = (e && e.message) ? String(e.message).replace(/^Error:\s*/, '') : '불러오지 못했음';
+        if (done) done(m); else { clear($('out')); $('out').appendChild(el('div', { class: 'msg err', text: m })); }
+      })
+      .getDashboard(KEY, !!force);
+  }
+
+  /* 필터 */
+  function build() {
+    var years = uniq(DATA.rows.map(function (r) { return r.year; })).sort().reverse();
+    var ys = $('year'); clear(ys);
+    ys.appendChild(el('option', { value: 'all', text: '전체' }));
+    years.forEach(function (y) { ys.appendChild(el('option', { value: y, text: y + '년' })); });
+    ys.value = years.indexOf(F.year) >= 0 ? F.year : 'all'; F.year = ys.value;
+    ys.onchange = function () { F.year = ys.value; render(); };
+
+    var cats = uniq(DATA.rows.map(function (r) { return r.category; })).sort();
+    if (cats.indexOf(F.cat) < 0) F.cat = 'all';
+    var box = $('cats'); clear(box);
+    [['all', '전체 분류']].concat(cats.map(function (c) { return [c, c]; })).forEach(function (c) {
+      box.appendChild(el('button', { class: 'chip', type: 'button', text: c[1], 'aria-pressed': String(F.cat === c[0]),
+        onclick: function () { F.cat = c[0]; var bs = box.children; for (var i = 0; i < bs.length; i++) bs[i].setAttribute('aria-pressed', 'false'); this.setAttribute('aria-pressed', 'true'); render(); } }));
+    });
+  }
+
+  /* 눈금자: 모든 비교가 같은 1~5점 눈금을 씀 */
+  function ruler(mean, hero) {
+    var pct = (mean - 1) / 4 * 100;
+    var cls = 'dot' + (pct < 8 ? ' el' : pct > 92 ? ' er' : '');
+    var w = el('div', { class: 'ruler' + (hero ? ' hero' : ''), role: 'img', 'aria-label': '평균 ' + fmt1(mean) + '점(5점 만점)' });
+    var track = el('div', { class: 'track' });
+    w.appendChild(track);
+    w.appendChild(el('div', { class: cls, style: 'left:' + pct.toFixed(2) + '%' }, [el('span', { class: 'val', text: fmt1(mean) }), el('i')]));
+    w.appendChild(el('div', { class: 'ticks', 'aria-hidden': 'true' }, [1, 2, 3, 4, 5].map(function (n) { return el('span', { text: String(n) }); })));
+    return w;
+  }
+  function stack(d) {
+    var n = sum(d);
+    var bar = el('div', { class: 'stack', role: 'img', 'aria-label': '점수 분포 ' + d.map(function (v, i) { return (i + 1) + '점 ' + v + '명'; }).join(', ') });
+    d.forEach(function (v, i) {
+      if (!v) return;
+      var p = v / n * 100;
+      bar.appendChild(el('span', { class: 'l' + (i + 1), style: 'width:' + p + '%;background:var(--s' + (i + 1) + ')', title: (i + 1) + '점 ' + v + '명 (' + fmt1(p) + '%)', text: p >= 9 ? Math.round(p) + '%' : '' }));
+    });
+    return bar;
+  }
+
+  function render() {
+    var out = $('out'); clear(out);
+    var rows = DATA.rows.filter(function (r) { return (F.cat === 'all' || r.category === F.cat); });
+    var inYear = rows.filter(function (r) { return F.year === 'all' || r.year === F.year; });
+    var shown = inYear.filter(function (r) { return r.shown; });
+
+    if (!DATA.rows.length) { out.appendChild(el('div', { class: 'empty', text: '등록된 설문이 없음. 설문이 만들어지고 응답이 모이면 여기에 표시됨.' })); return; }
+    if (!inYear.length) { out.appendChild(el('div', { class: 'empty', text: '선택한 조건에 해당하는 설문이 없음.' })); return; }
+
+    /* 요약 */
+    var dist = sumDist(shown), mean = meanOf(dist), pos = posOf(dist);
+    var stats = el('dl', { class: 'stats' });
+    function stat(t, v, u) { stats.appendChild(el('div', null, [el('dt', { text: t }), el('dd', null, [v, u ? el('small', { text: u }) : null])])); }
+    stat('조사', String(inYear.length), '건');
+    stat('응답', String(sum(inYear.map(function (r) { return r.n; }))), '명');
+    stat('평균 만족도', mean == null ? '-' : fmt1(mean), mean == null ? '' : '/ 5점');
+    stat('긍정 응답(4~5점)', pos == null ? '-' : Math.round(pos) + '%', '');
+    out.appendChild(stats);
+
+    /* 전체·분류별 */
+    var s1 = el('section');
+    s1.appendChild(el('h2', { text: '만족도 눈금' }));
+    s1.appendChild(el('p', { class: 'lead', text: '막대의 색 띠는 1점(낮음)에서 5점(높음)까지의 눈금이며, 표지가 평균 위치임. 모든 비교가 같은 눈금을 사용함.' }));
+    if (mean != null) {
+      s1.appendChild(el('div', { class: 'catrow', style: 'border-top:0;grid-template-columns:1fr' }, [
+        el('div', { class: 'nm', text: (F.year === 'all' ? '전체 기간' : F.year + '년') + ' · ' + (F.cat === 'all' ? '전체 분류' : F.cat) }),
+        ruler(mean, true)
+      ]));
+      if (F.cat === 'all') {
+        uniq(shown.map(function (r) { return r.category; })).sort().forEach(function (c) {
+          var rs = shown.filter(function (r) { return r.category === c; });
+          var d = sumDist(rs), m = meanOf(d);
+          s1.appendChild(el('div', { class: 'catrow' }, [
+            el('div', { class: 'nm', text: c }),
+            ruler(m, false),
+            el('div', { class: 'ft', text: rs.length + '건 · 응답 ' + sum(d) + '명 · 긍정 ' + Math.round(posOf(d)) + '%' })
+          ]));
+        });
+      }
+    } else {
+      s1.appendChild(el('div', { class: 'empty', text: '수치를 표시할 수 있는 설문이 없음. 대표 만족도 문항에 응답이 5건 이상 모이면 표시됨.' }));
+    }
+    out.appendChild(s1);
+
+    /* 사업·행사별 */
+    var s2 = el('section');
+    s2.appendChild(el('h2', { text: '사업·행사별 만족도' }));
+    s2.appendChild(el('p', { class: 'lead', text: '최근 마감 순. 막대는 1점부터 5점까지의 응답 비율임.' }));
+    inYear.forEach(function (r) {
+      var tag = el('span', { class: 'tag' + (r.state === 'open' ? '' : ' closed'), text: r.state === 'open' ? '진행 중(중간 집계)' : '마감' });
+      var head = el('div', null, [el('h3', { text: r.title }), el('p', { class: 'meta' }, [r.category + ' · ' + r.year + '년', tag])]);
+      var viz;
+      var rate = r.target ? ' · 응답률 ' + fmt1(r.n / r.target * 100) + '%' : '';
+      if (r.shown) {
+        var m = meanOf(r.dist), p = posOf(r.dist);
+        viz = el('div', null, [ruler(m, false), stack(r.dist),
+          el('div', { class: 'legend', 'aria-hidden': 'true' }, [el('span', { text: '1점' }), el('span', { text: '5점' })]),
+          el('p', { class: 'facts', text: '응답 ' + r.n + '명' + rate + ' · 긍정 응답 ' + Math.round(p) + '%' })]);
+      } else {
+        viz = el('p', { class: 'hidden-note', text: !r.hasKpi
+          ? '대표 만족도 문항이 지정되지 않은 설문이라 비교에서 제외됨. (응답 ' + r.n + '명)'
+          : '대표 문항 응답이 ' + r.valid + '건으로 ' + DATA.minN + '건 미만이라 수치를 표시하지 않음. (응답 ' + r.n + '명' + rate + ')' });
+      }
+      s2.appendChild(el('article', { class: 'row' }, [head, viz]));
+    });
+    out.appendChild(s2);
+
+    /* 연도별 추이: 같은 사업(program)이 2개 연도 이상 있을 때 */
+    var byProg = {};
+    rows.filter(function (r) { return r.shown; }).forEach(function (r) {
+      var p = byProg[r.program] = byProg[r.program] || {};
+      p[r.year] = (p[r.year] || [0, 0, 0, 0, 0]).map(function (v, i) { return v + r.dist[i]; });
+    });
+    var progs = Object.keys(byProg).filter(function (k) { return Object.keys(byProg[k]).length >= 2; }).sort();
+    if (progs.length) {
+      var s3 = el('section');
+      s3.appendChild(el('h2', { text: '연도별 추이' }));
+      s3.appendChild(el('p', { class: 'lead', text: '같은 사업(program)이 여러 해에 걸쳐 조사된 경우의 평균 변화임.' }));
+      var grid = el('div', { class: 'trends' });
+      progs.forEach(function (k) {
+        var pts = Object.keys(byProg[k]).sort().map(function (y) { return { year: y, mean: meanOf(byProg[k][y]), n: sum(byProg[k][y]) }; });
+        var delta = pts[pts.length - 1].mean - pts[pts.length - 2].mean;
+        var dt = Math.abs(delta) < 0.05 ? '전년 대비 변동 없음' : '전년 대비 ' + (delta > 0 ? '+' : '−') + fmt1(Math.abs(delta)) + '점';
+        grid.appendChild(el('div', { class: 'trend' }, [el('h3', { text: k }), el('p', { class: 'd' }, [dt]), trendSvg(pts)]));
+      });
+      s3.appendChild(grid);
+      out.appendChild(s3);
+    }
+
+    out.appendChild(el('footer', null, [
+      '집계 시각 ' + DATA.generatedAt + ' · 긍정 응답은 4~5점 응답 비율임 · 서술 의견과 개별 응답은 이 화면에 표시하지 않음 · 결과는 최대 5분 지연될 수 있음(새로고침으로 갱신)'
+    ]));
+  }
+
+  function trendSvg(pts) {
+    var W = 260, H = 96, padX = 30, top = 26, bot = 22;
+    var ms = pts.map(function (p) { return p.mean; });
+    var lo = Math.max(1, Math.min.apply(null, ms) - 0.4), hi = Math.min(5, Math.max.apply(null, ms) + 0.4);
+    if (hi - lo < 0.8) { lo = Math.max(1, lo - 0.4); hi = Math.min(5, hi + 0.4); }
+    var n = pts.length;
+    function x(i) { return padX + i * (W - 2 * padX) / (n - 1); }
+    function y(m) { return top + (hi - m) / (hi - lo) * (H - top - bot); }
+    var s = svg('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': pts.map(function (p) { return p.year + '년 ' + fmt1(p.mean) + '점'; }).join(', ') });
+    s.appendChild(svg('polyline', { class: 'ln', points: pts.map(function (p, i) { return x(i).toFixed(1) + ',' + y(p.mean).toFixed(1); }).join(' ') }));
+    pts.forEach(function (p, i) {
+      s.appendChild(svg('circle', { class: 'pt' + (i === n - 1 ? ' last' : ''), cx: x(i).toFixed(1), cy: y(p.mean).toFixed(1), r: 4.5 }));
+      s.appendChild(svg('text', { class: 'v', x: x(i).toFixed(1), y: (y(p.mean) - 10).toFixed(1) }, fmt1(p.mean)));
+      s.appendChild(svg('text', { x: x(i).toFixed(1), y: H - 6 }, p.year));
+    });
+    return s;
+  }
+})();
+</script>
+</body>
+</html>

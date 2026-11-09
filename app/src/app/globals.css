@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+/* 디자인 토큰: survey-platform-handoff/docs/04-design-system.md 1절 */
+:root {
+  --bg: #f1f3f2;
+  --sidebar: #f9faf9;
+  --surface: #ffffff;
+  --line: #e5e9e5;
+  --ink: #1c2420;
+  --muted: #858e86;        /* 비활성·큰 글씨 전용 */
+  --muted-text: #667069;   /* 작은 보조 문구(대비 보정) */
+  --lime: #d5f26b;
+  --lime-soft: #e1f89b;
+  --teal: #2a9d97;
+  --teal-deep: #1f7a74;
+  --lav: #d1caf7;
+  --blue: #bad6fb;
+  --mint: #b1e7c7;
+  --avatar: #dce9d6;
+  --scale-1: #e58a6f;
+  --scale-2: #f0b98a;
+  --scale-3: #e3e6df;
+  --scale-4: #8fd3c0;
+  --scale-5: #2a9d97;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-sidebar: var(--sidebar);
+  --color-surface: var(--surface);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-muted-text: var(--muted-text);
+  --color-lime: var(--lime);
+  --color-lime-soft: var(--lime-soft);
+  --color-teal: var(--teal);
+  --color-teal-deep: var(--teal-deep);
+  --color-lav: var(--lav);
+  --color-blue: var(--blue);
+  --color-mint: var(--mint);
+  --color-scale-1: var(--scale-1);
+  --color-scale-2: var(--scale-2);
+  --color-scale-3: var(--scale-3);
+  --color-scale-4: var(--scale-4);
+  --color-scale-5: var(--scale-5);
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  word-break: keep-all; /* 한국어 낱말 중간 줄바꿈 방지 */
+  overflow-wrap: anywhere;
+}
+
+/* 인쇄: 배경을 흰색으로, 색 띠·막대 색은 그대로 인쇄 */
+@media print {
+  body {
+    background: #fff;
+  }
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  section,
+  article {
+    break-inside: avoid;
+  }
+}

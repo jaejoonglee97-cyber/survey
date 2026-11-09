@@ -1,0 +1,9 @@
+# 로컬 도구 설정(이 PC 전용)
+.claude/
+
+# 운영체제 파일
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 앱의 비밀 값·로컬 데이터는 app/.gitignore 에서 제외함(.env*, .local-data/, 키 JSON 등)

@@ -1,0 +1,46 @@
+# main 병합 전 필수 검사: 타입·린트·시험(커버리지)·빌드·비밀 값 노출 검사
+# 앱 코드는 app/ 폴더에 있음(모든 단계를 app/ 에서 실행).
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: app
+    env:
+      # 시험·빌드는 실제 시트·키 없이 더미 설정으로만 돌림
+      DATA_BACKEND: local
+      NEXTAUTH_SECRET: ci-only-not-a-secret-value-000000
+      NEXTAUTH_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # git 이력 전체에서 .env·키 파일 추적 여부 검사
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test:coverage
+      - run: npm run build
+      - run: npm run check:secrets
+      - name: git 이력에 .env·키 파일이 들어간 적이 있는지
+        run: |
+          if git log --all --name-only --pretty=format: | grep -E '(^|/)\.env($|\.)|service-account.*\.json$|credentials.*\.json$' | grep -v '\.env\.example$' | sort -u | grep .; then
+            echo "::error::git 이력에 비밀 값 파일이 있음. 해당 키를 폐기·재발급하고 이력에서 제거할 것"; exit 1
+          fi
+      - name: 운영 의존성 취약점(높음 이상)
+        run: npm audit --omit=dev --audit-level=high || echo "::warning::취약점 있음. docs/safety-report.md 의 예외 기록을 확인할 것"
