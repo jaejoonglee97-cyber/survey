@@ -8,7 +8,7 @@ import * as ops from "@/lib/admin/editor-ops";
 import {
   applyAutoFixes,
   exportMd,
-  importMd,
+  extractQuestionSets,
   validateDraft,
   type Issue,
   type Question,
@@ -43,7 +43,8 @@ export function SurveyEditor({ id: initialId, initial, previous }: { id: string 
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [mdOpen, setMdOpen] = useState(false);
   const [mdText, setMdText] = useState("");
-  const [mdResult, setMdResult] = useState<{ errors: string[]; warnings: string[] } | null>(null);
+  const [mdFileName, setMdFileName] = useState("");
+  const [pick, setPick] = useState(0);
   const [pending, start] = useTransition();
   const publishRef = useRef<HTMLDialogElement>(null);
   const router = useRouter();
@@ -100,13 +101,17 @@ export function SurveyEditor({ id: initialId, initial, previous }: { id: string 
     });
   }
 
-  function applyMd() {
-    const r = importMd(mdText);
-    setMdResult({ errors: r.errors, warnings: r.warnings });
-    if (!r.ok) return;
-    set(() => r.spec);
+  // 파일에서 찾은 문항 묶음(표가 여러 개면 여러 개)
+  const found = useMemo(() => (mdText.trim() ? extractQuestionSets(mdText) : []), [mdText]);
+  const chosen = found[Math.min(pick, Math.max(0, found.length - 1))];
+
+  function applyQuestions() {
+    if (!chosen) return;
+    set((s) => ops.replaceQuestions(s, chosen.questions, chosen.kpiQuestionId));
     setMdOpen(false);
-    setMsg({ kind: "ok", text: `md 파일에서 문항 ${r.spec.questions.length}개를 불러옴. 저장해야 반영됨.` });
+    setMdText("");
+    setMdFileName("");
+    setMsg({ kind: "ok", text: `문항 ${chosen.questions.length}개를 가져옴. 기본 정보는 그대로임. 저장해야 반영됨.` });
   }
 
   const minutes = Math.max(1, Math.round(report.estimatedSeconds / 60));
@@ -120,58 +125,7 @@ export function SurveyEditor({ id: initialId, initial, previous }: { id: string 
             <h2 id="basics-h" className="text-[17px] font-bold">
               기본 정보
             </h2>
-            <button type="button" className={buttonCls.ghost} onClick={() => setMdOpen((v) => !v)} aria-expanded={mdOpen}>
-              md 파일 불러오기
-            </button>
           </div>
-
-          {mdOpen && (
-            <div className="mb-5 rounded-[12px] border border-dashed border-line p-4">
-              <label htmlFor="md-file" className={labelCls}>
-                md 파일 선택 또는 내용 붙여 넣기
-              </label>
-              <input
-                id="md-file"
-                type="file"
-                accept=".md,text/markdown,text/plain"
-                className="mt-1 block text-[14px]"
-                onChange={async (e) => {
-                  const f = e.target.files?.[0];
-                  if (f && f.size < 200_000) setMdText(await f.text());
-                }}
-              />
-              <textarea
-                aria-label="md 내용"
-                value={mdText}
-                onChange={(e) => setMdText(e.target.value)}
-                rows={8}
-                className="mt-2 w-full rounded-[10px] border border-line p-3 font-mono text-[13px]"
-                placeholder={"---\ntitle: …\nslug: …\ndeadline: 2026-12-31 23:59\n---\n## [5점*] …"}
-              />
-              {mdResult && (mdResult.errors.length > 0 || mdResult.warnings.length > 0) && (
-                <ul className="mt-2 space-y-1 text-[13px]">
-                  {mdResult.errors.map((e, i) => (
-                    <li key={`e${i}`} className="text-[#8a3520]">
-                      오류: {e}
-                    </li>
-                  ))}
-                  {mdResult.warnings.map((w, i) => (
-                    <li key={`w${i}`} className="text-muted-text">
-                      확인: {w}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <div className="mt-3 flex gap-2">
-                <button type="button" className={buttonCls.primary} disabled={!mdText.trim()} onClick={applyMd}>
-                  지금 초안을 이 내용으로 바꾸기
-                </button>
-                <button type="button" className={buttonCls.ghost} onClick={() => setMdOpen(false)}>
-                  닫기
-                </button>
-              </div>
-            </div>
-          )}
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="md:col-span-2">
@@ -285,7 +239,116 @@ export function SurveyEditor({ id: initialId, initial, previous }: { id: string 
             <h2 id="questions-h" className="text-[17px] font-bold">
               문항 <span className="text-muted-text">{spec.questions.length}개</span>
             </h2>
+            <button type="button" className={buttonCls.ghost} onClick={() => setMdOpen((v) => !v)} aria-expanded={mdOpen}>
+              파일에서 문항 가져오기
+            </button>
           </div>
+
+          {mdOpen && (
+            <div className="rounded-[18px] border border-dashed border-ink bg-surface p-5">
+              <p className="text-[14px]">
+                문항을 정리한 md 파일을 고르면 <strong>질문만</strong> 뽑아 아래 문항을 바꿈. 설문 제목·사업명·분류·마감일·안내문은 지금 입력한 그대로 둠.
+              </p>
+              <p className="mt-1 text-[12px] text-muted-text">
+                읽을 수 있는 형식: 「번호 | 문항 | 유형 | 필수 | 보기·척도」 열이 있는 표, 또는 「## [5점*] 질문」 형식.
+              </p>
+              <label htmlFor="md-file" className="mt-3 inline-flex h-10 cursor-pointer items-center rounded-[10px] bg-ink px-4 text-[14px] font-bold text-white">
+                md 파일 고르기
+              </label>
+              <input
+                id="md-file"
+                type="file"
+                accept=".md,.markdown,.txt,text/markdown,text/plain"
+                className="sr-only"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (f && f.size < 500_000) {
+                    setMdText(await f.text());
+                    setMdFileName(f.name);
+                    setPick(0);
+                  }
+                }}
+              />
+              {mdFileName && <span className="ml-3 text-[13px]">{mdFileName}</span>}
+              <details className="mt-3 text-[13px]">
+                <summary className="cursor-pointer text-muted-text">파일 대신 내용 붙여 넣기</summary>
+                <textarea
+                  aria-label="문항 내용 붙여 넣기"
+                  value={mdText}
+                  onChange={(e) => {
+                    setMdText(e.target.value);
+                    setPick(0);
+                  }}
+                  rows={6}
+                  className="mt-2 w-full rounded-[10px] border border-line p-3 font-mono text-[13px]"
+                />
+              </details>
+
+              {mdText.trim() && found.length === 0 && (
+                <p role="alert" className="mt-3 rounded-[10px] bg-[#fdf0eb] px-3 py-2 text-[13px] text-[#8a3520]">
+                  문항을 찾지 못함. 「문항」과 「유형」 열이 있는 표가 있는지 확인할 것.
+                </p>
+              )}
+
+              {found.length > 1 && (
+                <fieldset className="mt-4">
+                  <legend className="text-[13px] font-semibold">이 파일에 설문이 {found.length}개 있음. 가져올 것을 고를 것</legend>
+                  <div className="mt-2 space-y-2">
+                    {found.map((s, i) => (
+                      <label key={i} className={`flex cursor-pointer items-center gap-3 rounded-[10px] border-2 px-3 py-2 text-[14px] ${pick === i ? "border-ink bg-lime-soft" : "border-line"}`}>
+                        <input type="radio" name="pick-set" checked={pick === i} onChange={() => setPick(i)} className="accent-ink" />
+                        <span>
+                          {s.label} <span className="text-muted-text">· 문항 {s.questions.length}개</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
+
+              {chosen && (
+                <div className="mt-4">
+                  <p className="text-[13px] font-semibold">
+                    가져올 문항 {chosen.questions.length}개{chosen.kpiQuestionId ? ` · 대표 만족도 ${chosen.questions.findIndex((q) => q.id === chosen.kpiQuestionId) + 1}번` : " · 대표 만족도 문항 없음(가져온 뒤 지정할 것)"}
+                  </p>
+                  <ol className="mt-2 max-h-64 list-decimal space-y-1 overflow-y-auto rounded-[10px] bg-bg py-2 pl-8 pr-3 text-[13px]">
+                    {chosen.questions.map((q) => (
+                      <li key={q.id}>
+                        <span className="mr-1 rounded-full bg-surface px-2 py-0.5 text-[11px] font-semibold">{TYPE_LABEL[q.type]}</span>
+                        {q.text}
+                        {q.id === chosen.kpiQuestionId && <span className="ml-1 font-bold">★</span>}
+                      </li>
+                    ))}
+                  </ol>
+                  {chosen.notes.length > 0 && (
+                    <ul className="mt-2 space-y-1 text-[12px] text-muted-text">
+                      {chosen.notes.map((n, i) => (
+                        <li key={i}>확인: {n}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button type="button" className={buttonCls.primary} disabled={!chosen} onClick={applyQuestions}>
+                  {chosen ? `문항 ${chosen.questions.length}개로 바꾸기` : "문항 바꾸기"}
+                </button>
+                <button
+                  type="button"
+                  className={buttonCls.ghost}
+                  onClick={() => {
+                    setMdOpen(false);
+                    setMdText("");
+                    setMdFileName("");
+                  }}
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          )}
+
           {spec.questions.map((q, i) => (
             <QuestionEditor
               key={q.id}

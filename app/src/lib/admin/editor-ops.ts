@@ -121,6 +121,11 @@ export function copyQuestionsFrom(spec: SurveySpec, prev: Pick<SurveySpec, "ques
   return { ...spec, intro: prev.intro || spec.intro, questions: prev.questions.map((q) => ({ ...q })), kpiQuestionId: prev.kpiQuestionId };
 }
 
+/** 파일에서 뽑은 문항으로 문항만 바꿈(제목·사업명·분류·마감일·안내문 등 기본 정보는 그대로) */
+export function replaceQuestions(spec: SurveySpec, questions: Question[], kpiQuestionId: string | null): SurveySpec {
+  return { ...spec, questions: questions.map((q) => ({ ...q })), kpiQuestionId };
+}
+
 /** 저장 전 정리: 앞뒤 공백, 빈 선택 필드 제거, 연도는 마감일에서 */
 export function tidy(spec: SurveySpec): SurveySpec {
   const deadline = normalizeDeadline(spec.deadline) ?? spec.deadline;

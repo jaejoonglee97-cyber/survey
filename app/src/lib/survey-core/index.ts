@@ -7,3 +7,4 @@ export * from "./aggregate";
 export * from "./report";
 export * from "./dashboard";
 export * from "./validate";
+export * from "./extract-questions";
