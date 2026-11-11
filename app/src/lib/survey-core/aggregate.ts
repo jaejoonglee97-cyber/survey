@@ -27,6 +27,22 @@ export interface ScaleAgg extends BaseAgg {
   /** 긍정 응답(4~5점) 수와 비율 */
   pos: number;
   posPct: number;
+  /** 가장 높은 점수(5점, 예: '매우 만족') 응답 수와 비율 */
+  top: number;
+  topPct: number;
+  low?: string;
+  high?: string;
+}
+/** 10점 척도(1~10점) */
+export interface Scale10Agg extends BaseAgg {
+  type: "scale10";
+  /** 1점~10점 응답 수 */
+  dist: number[];
+  valid: number;
+  mean: number;
+  /** 상위 점수(9~10점) 응답 수와 비율 */
+  top: number;
+  topPct: number;
   low?: string;
   high?: string;
 }
@@ -34,7 +50,7 @@ export interface TextAgg extends BaseAgg {
   type: "text";
   texts: string[];
 }
-export type QuestionAgg = ChoiceAgg | ScaleAgg | TextAgg;
+export type QuestionAgg = ChoiceAgg | ScaleAgg | Scale10Agg | TextAgg;
 
 export interface Aggregate {
   n: number;
@@ -94,9 +110,26 @@ export function aggregate(spec: Pick<SurveySpec, "questions">, rows: readonly (r
         mean: valid ? round1(sum / valid) : 0,
         pos,
         posPct: pct(pos, valid),
+        top: dist[4],
+        topPct: pct(dist[4], valid),
         low: q.low,
         high: q.high,
       };
+    }
+
+    if (q.type === "scale10") {
+      const dist = Array.from({ length: 10 }, () => 0);
+      let sum = 0;
+      for (const c of cells) {
+        const v = Number(c);
+        if (Number.isInteger(v) && v >= 1 && v <= 10) {
+          dist[v - 1]++;
+          sum += v;
+        }
+      }
+      const valid = dist.reduce((a, b) => a + b, 0);
+      const top = dist[8] + dist[9];
+      return { ...base, type: "scale10", dist, valid, mean: valid ? round1(sum / valid) : 0, top, topPct: pct(top, valid), low: q.low, high: q.high };
     }
 
     return { ...base, type: "text", texts: cells.map(unsafeCell) };

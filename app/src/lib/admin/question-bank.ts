@@ -75,6 +75,13 @@ export const QUESTION_BANK: BankGroup[] = [
     ],
   },
   {
+    name: "점수(10점 척도)",
+    items: [
+      { type: "scale10", text: "이 프로그램을 동료에게 추천할 의향은 어느 정도입니까?", required: true, low: "전혀 추천하지 않음", high: "적극 추천함" },
+      { type: "scale10", text: "이번 참여에서 스스로의 도전에 몇 점을 주시겠습니까?", required: true, low: "매우 낮음", high: "매우 높음" },
+    ],
+  },
+  {
     name: "참여자 구분(겹쳐 묻지 않기)",
     items: [
       {

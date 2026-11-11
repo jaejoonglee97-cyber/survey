@@ -267,12 +267,14 @@ function QuestionField({
             );
           })}
 
-        {q.type === "scale5" && (
+        {(q.type === "scale5" || q.type === "scale10") && (
           <>
-            <div className="grid grid-cols-5 gap-2">
-              {[1, 2, 3, 4, 5].map((v) => {
+            {/* 10점 척도는 휴대전화에서 5칸씩 두 줄 */}
+            <div className={`grid gap-2 ${q.type === "scale10" ? "grid-cols-5 sm:grid-cols-10" : "grid-cols-5"}`}>
+              {Array.from({ length: q.type === "scale10" ? 10 : 5 }, (_, i) => i + 1).map((v) => {
                 const checked = s.scale === v;
-                const label = v === 1 ? `1점 ${q.low ?? ""}` : v === 5 ? `5점 ${q.high ?? ""}` : `${v}점`;
+                const max = q.type === "scale10" ? 10 : 5;
+                const label = v === 1 ? `1점 ${q.low ?? ""}` : v === max ? `${max}점 ${q.high ?? ""}` : `${v}점`;
                 return (
                   <label
                     key={v}
@@ -296,7 +298,9 @@ function QuestionField({
             </div>
             <div className="mt-2 flex justify-between gap-4 text-[12px] text-muted-text" aria-hidden="true">
               <span>1 {q.low}</span>
-              <span className="text-right">5 {q.high}</span>
+              <span className="text-right">
+                {q.type === "scale10" ? 10 : 5} {q.high}
+              </span>
             </div>
           </>
         )}

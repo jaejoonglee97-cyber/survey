@@ -40,7 +40,7 @@ export function readAnswer(q: Question, s: QuestionState): Read {
     const v = s.text.trim();
     return v ? { kind: "ok", value: v } : { kind: "empty" };
   }
-  if (q.type === "scale5") return s.scale ? { kind: "ok", value: s.scale } : { kind: "empty" };
+  if (q.type === "scale5" || q.type === "scale10") return s.scale ? { kind: "ok", value: s.scale } : { kind: "empty" };
   if (!s.selected.length) return { kind: "empty" };
   const vals: string[] = [];
   for (const i of s.selected) {

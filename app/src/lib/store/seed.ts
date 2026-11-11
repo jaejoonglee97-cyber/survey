@@ -56,6 +56,8 @@ export function randomAnswers(questions: Question[], rand: () => number, scoreWe
   for (const q of questions) {
     if (!q.required && rand() < 0.3) continue;
     if (q.type === "scale5") out[q.id] = pickWeighted(rand, scoreWeights) + 1;
+    // 10점 척도는 5단계 가중치를 두 칸씩 나눠 씀(1~2, 3~4, …, 9~10)
+    else if (q.type === "scale10") out[q.id] = pickWeighted(rand, scoreWeights) * 2 + 1 + (rand() < 0.5 ? 0 : 1);
     else if (q.type === "text") out[q.id] = DUMMY_OPINIONS[Math.floor(rand() * DUMMY_OPINIONS.length)];
     else {
       const opts = q.options ?? [];

@@ -3,7 +3,7 @@
 import { hasQuestion, QUESTION_BANK, type BankQuestion } from "@/lib/admin/question-bank";
 import type { QuestionType, SurveySpec } from "@/lib/survey-core";
 
-const TYPE_LABEL: Record<QuestionType, string> = { single: "단일", multi: "복수", scale5: "5점", text: "서술" };
+const TYPE_LABEL: Record<QuestionType, string> = { single: "단일", multi: "복수", scale5: "5점", scale10: "10점", text: "서술" };
 
 // 자주 쓰는 문항 목록. 누르면 맨 뒤에 추가됨
 export function QuestionBank({ spec, onAdd, onClose }: { spec: SurveySpec; onAdd: (item: BankQuestion) => void; onClose: () => void }) {

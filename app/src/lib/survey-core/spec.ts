@@ -3,8 +3,13 @@ import { z } from "zod";
 // 설문 명세: 시스템의 기준 데이터. surveys 탭의 questions_json 등에 저장됨.
 // 원 설계: survey-platform-handoff/docs/02-architecture.md 4절, 프로토타입: reference/Survey.gs
 
-export const QUESTION_TYPES = ["single", "multi", "scale5", "text"] as const;
+export const QUESTION_TYPES = ["single", "multi", "scale5", "scale10", "text"] as const;
 export type QuestionType = (typeof QUESTION_TYPES)[number];
+
+/** 점수형 문항(5점·10점 척도) */
+export const isScaleType = (t: QuestionType): t is "scale5" | "scale10" => t === "scale5" || t === "scale10";
+/** 점수형 문항의 최고 점수(1점부터 시작) */
+export const scaleMax = (t: QuestionType): number => (t === "scale10" ? 10 : 5);
 
 export const LIMITS = {
   maxQuestions: 40,
@@ -50,7 +55,7 @@ export interface Question {
   options?: QuestionOption[];
   /** multi: 최대 선택 개수(없거나 0이면 제한 없음) */
   max?: number;
-  /** scale5: 양 끝 라벨 */
+  /** scale5·scale10: 양 끝 라벨 */
   low?: string;
   high?: string;
 }

@@ -44,7 +44,7 @@ export interface ValidationReport {
 
 export const PII_NOTICE = "서술 문항에는 이름·소속 등 개인을 알 수 있는 내용을 적지 말아 주십시오.";
 
-const SECONDS: Record<Question["type"], number> = { single: 8, multi: 12, scale5: 6, text: 40 };
+const SECONDS: Record<Question["type"], number> = { single: 8, multi: 12, scale5: 6, scale10: 8, text: 40 };
 const PII_RE = /이름|성명|성함|연락처|전화|휴대폰|핸드폰|주민등록|주민번호|생년월일|이메일|e-?mail|주소|계좌/i;
 const AFFILIATION_RE = /소속|직위|직책|기관명|근무처|근무지/;
 const SEGMENT_RE = /유형|연령|나이|근무|직급|경력|성별|지역|기관|학력|직종/;
@@ -122,8 +122,8 @@ export function validateDraft(spec: SurveySpec, opts: ValidateOptions = {}): Val
       }
     }
 
-    if (q.type === "scale5" && (!q.low?.trim() || !q.high?.trim())) {
-      add("SCALE_LABELS", "error", "5점 문항에는 양 끝 라벨(낮음·높음)이 필요함", q.id);
+    if ((q.type === "scale5" || q.type === "scale10") && (!q.low?.trim() || !q.high?.trim())) {
+      add("SCALE_LABELS", "error", `${q.type === "scale10" ? "10점" : "5점"} 문항에는 양 끝 라벨(낮음·높음)이 필요함`, q.id);
     }
 
     if (DOUBLE_RE.test(q.text)) add("DOUBLE_BARRELED", "warning", "한 문항에서 두 가지를 묻는 것으로 보임. 나누는 것을 검토할 것", q.id);

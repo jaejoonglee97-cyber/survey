@@ -8,3 +8,4 @@ export * from "./report";
 export * from "./dashboard";
 export * from "./validate";
 export * from "./extract-questions";
+export * from "./evaluation";

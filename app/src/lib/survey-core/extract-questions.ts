@@ -49,6 +49,7 @@ function headerColumns(cells: string[]): Partial<Record<Col, number>> | null {
 
 function parseType(raw: string): { type: QuestionType; max?: number } | null {
   const t = raw.replace(/\s/g, "");
+  if (/10점/.test(t)) return { type: "scale10" };
   if (/5점|척도|리커트/.test(t)) return { type: "scale5" };
   if (/복수|다중|중복/.test(t)) {
     const m = raw.match(/최대\s*(\d+)/);
@@ -74,7 +75,7 @@ function parseOptions(raw: string): QuestionOption[] {
 }
 
 function parseScale(raw: string): { low: string; high: string } | null {
-  const m = raw.match(/1\s*(?:점)?\s*[:=]?\s*(.+?)\s*[~∼〜\-–—]\s*5\s*(?:점)?\s*[:=]?\s*(.+)$/);
+  const m = raw.match(/1\s*(?:점)?\s*[:=]?\s*(.+?)\s*[~∼〜\-–—]\s*(?:10|5)\s*(?:점)?\s*[:=]?\s*(.+)$/);
   if (!m) return null;
   return { low: m[1].trim(), high: m[2].trim() };
 }
@@ -103,7 +104,7 @@ function tableToSet(label: string, header: string[], rows: string[][]): Question
       if (kind.type === "multi" && kind.max) q.max = kind.max;
       if (q.options.length < 2) notes.push(`${questions.length + 1}번: 보기가 2개 미만임. 편집기에서 보기를 채울 것`);
     }
-    if (kind.type === "scale5") {
+    if (kind.type === "scale5" || kind.type === "scale10") {
       const sc = parseScale(get("options"));
       q.low = sc?.low ?? "매우 불만족";
       q.high = sc?.high ?? "매우 만족";
@@ -149,7 +150,7 @@ export function extractQuestionSets(md: string): QuestionSet[] {
   }
 
   // 표가 없으면 시스템 형식(## [단일*] …)으로 읽어 봄. 머리말이 없어도 문항만 가져옴
-  if (!sets.length && /^##\s*\[\s*(단일|복수|5점|서술)/m.test(text)) {
+  if (!sets.length && /^##\s*\[\s*(단일|복수|10점|5점|서술)/m.test(text)) {
     const body = /^\s*---\s*$/m.test(text.split("\n").find((l) => l.trim() !== "") ?? "")
       ? text
       : `---\ntitle: x\nslug: xx\ndeadline: 2099-12-31\n---\n${text}`;

@@ -36,14 +36,26 @@ export interface PreviousSurvey {
   kpiQuestionId: string | null;
 }
 
-const TYPE_LABEL: Record<QuestionType, string> = { single: "단일 선택", multi: "복수 선택", scale5: "5점 척도", text: "서술" };
+const TYPE_LABEL: Record<QuestionType, string> = { single: "단일 선택", multi: "복수 선택", scale5: "5점 척도", scale10: "10점 척도", text: "서술" };
 const CATEGORIES = ["교육", "행사", "사업", "기타"];
 const fieldCls =
   "h-11 w-full rounded-[10px] border border-line-strong bg-field px-3 text-[15px] focus:border-ink focus:bg-surface focus-visible:outline-3 focus-visible:outline-teal";
 // 문항 유형별 색(왼쪽 띠·번호·유형 선택)
-const TYPE_BAR: Record<QuestionType, string> = { scale5: "border-l-t-scale", single: "border-l-t-single", multi: "border-l-t-multi", text: "border-l-t-text" };
-const TYPE_BG: Record<QuestionType, string> = { scale5: "bg-t-scale", single: "bg-t-single", multi: "bg-t-multi", text: "bg-t-text" };
-const TYPE_BORDER: Record<QuestionType, string> = { scale5: "border-t-scale", single: "border-t-single", multi: "border-t-multi", text: "border-t-text" };
+const TYPE_BAR: Record<QuestionType, string> = {
+  scale5: "border-l-t-scale",
+  scale10: "border-l-t-scale10",
+  single: "border-l-t-single",
+  multi: "border-l-t-multi",
+  text: "border-l-t-text",
+};
+const TYPE_BG: Record<QuestionType, string> = { scale5: "bg-t-scale", scale10: "bg-t-scale10", single: "bg-t-single", multi: "bg-t-multi", text: "bg-t-text" };
+const TYPE_BORDER: Record<QuestionType, string> = {
+  scale5: "border-t-scale",
+  scale10: "border-t-scale10",
+  single: "border-t-single",
+  multi: "border-t-multi",
+  text: "border-t-text",
+};
 const smallField = "rounded-[10px] border border-line-strong bg-field px-3 focus:border-ink focus:bg-surface";
 const labelCls = "mb-1 block text-[13px] font-semibold";
 
@@ -805,14 +817,14 @@ function QuestionEditor({
         </div>
       )}
 
-      {q.type === "scale5" && (
+      {(q.type === "scale5" || q.type === "scale10") && (
         <div className="mt-3 grid gap-2 md:grid-cols-2">
           <label className="text-[13px]">
             <span className="font-semibold">1점 라벨</span>
             <input value={q.low ?? ""} disabled={isKpi} onChange={(e) => set((s) => ops.updateQuestion(s, q.id, { low: e.target.value }))} className={`mt-1 h-10 w-full ${smallField} disabled:bg-bg disabled:text-muted-text`} />
           </label>
           <label className="text-[13px]">
-            <span className="font-semibold">5점 라벨</span>
+            <span className="font-semibold">{q.type === "scale10" ? "10점" : "5점"} 라벨</span>
             <input value={q.high ?? ""} disabled={isKpi} onChange={(e) => set((s) => ops.updateQuestion(s, q.id, { high: e.target.value }))} className={`mt-1 h-10 w-full ${smallField} disabled:bg-bg disabled:text-muted-text`} />
           </label>
         </div>

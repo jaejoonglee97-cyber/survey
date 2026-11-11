@@ -1,4 +1,4 @@
-import { pct, type Aggregate, type ChoiceAgg, type ScaleAgg, type TextAgg } from "./aggregate";
+import { pct, type Aggregate, type ChoiceAgg, type Scale10Agg, type ScaleAgg, type TextAgg } from "./aggregate";
 import type { SurveySpec } from "./spec";
 
 // 결과보고서 문안(공문서 명사형 종결). 수치만 정리하고 서술 의견 원문은 넣지 않음.
@@ -23,6 +23,7 @@ export function buildReportLines(
   }
 
   const scales = agg.questions.filter((q): q is ScaleAgg => q.type === "scale5");
+  const scales10 = agg.questions.filter((q): q is Scale10Agg => q.type === "scale10");
   const choices = agg.questions.filter((q): q is ChoiceAgg => q.type === "single" || q.type === "multi");
   const texts = agg.questions.filter((q): q is TextAgg => q.type === "text");
   let sec = 2;
@@ -38,6 +39,17 @@ export function buildReportLines(
       L.push(
         "- ‘" + q.text + "’ 문항은 평균 " + q.mean + "점(5점 만점), 긍정 응답(4~5점) 비율 " + q.posPct + "%(" + q.pos + "/" + q.valid + "명)로 나타났음.",
       );
+    }
+  }
+  if (scales10.length) {
+    L.push("");
+    L.push(sec++ + ". 점수 문항(10점 척도)");
+    for (const q of scales10) {
+      if (!q.valid) {
+        L.push("- ‘" + q.text + "’ 문항은 응답이 없었음.");
+        continue;
+      }
+      L.push("- ‘" + q.text + "’ 문항은 평균 " + q.mean + "점(10점 만점), 9~10점 응답 비율 " + q.topPct + "%(" + q.top + "/" + q.valid + "명)로 나타났음.");
     }
   }
   if (choices.length) {

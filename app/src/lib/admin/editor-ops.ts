@@ -56,6 +56,8 @@ export function blankQuestion(id: string, type: QuestionType): Question {
       return { id, type, text: "", required: true, options: [{ label: "" }, { label: "" }], max: 0 };
     case "scale5":
       return { id, type, text: "", required: true, low: KPI_LOW, high: KPI_HIGH };
+    case "scale10":
+      return { id, type, text: "", required: true, low: "매우 낮음", high: "매우 높음" };
     case "text":
       return { id, type, text: "", required: false };
   }
@@ -157,7 +159,7 @@ export function tidy(spec: SurveySpec): SurveySpec {
       if (q.note?.trim()) out.note = q.note.trim();
       if (q.type === "single" || q.type === "multi") out.options = (q.options ?? []).map((o) => (o.other ? { label: o.label.trim(), other: true } : { label: o.label.trim() }));
       if (q.type === "multi" && q.max) out.max = q.max;
-      if (q.type === "scale5") {
+      if (q.type === "scale5" || q.type === "scale10") {
         out.low = (q.low ?? "").trim();
         out.high = (q.high ?? "").trim();
       }

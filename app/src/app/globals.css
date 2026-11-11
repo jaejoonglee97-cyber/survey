@@ -29,6 +29,7 @@
   --t-single: #4f86d1;
   --t-multi: #8577dc;
   --t-text: #3a9f6f;
+  --t-scale10: #c27a1e;
 }
 
 @theme inline {
@@ -57,6 +58,7 @@
   --color-t-single: var(--t-single);
   --color-t-multi: var(--t-multi);
   --color-t-text: var(--t-text);
+  --color-t-scale10: var(--t-scale10);
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
 }
 

@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { CopyButton } from "@/components/admin/CopyButton";
+import { EvaluationPanel } from "@/components/admin/EvaluationPanel";
 import { ResponseProgress } from "@/components/admin/ResponseProgress";
 import { ShareCard } from "@/components/admin/ShareCard";
 import { Card, DistBar, PageHeader, StatCard, StateChip, buttonCls } from "@/components/admin/ui";
@@ -79,8 +80,12 @@ export default async function ResultsPage({ params, searchParams }: Props) {
         ))}
       </div>
 
+      <div className="mt-5">
+        <EvaluationPanel spec={{ program: rec.spec.program, target: rec.spec.target, kpiQuestionId: rec.spec.kpiQuestionId, questions: rec.spec.questions }} agg={agg} />
+      </div>
+
       <div className="mt-5 grid gap-5 lg:grid-cols-[2fr_1fr]">
-        <Card title="결과보고서 문안(초안)" action={<CopyButton text={report} label="문안 복사" />}>
+        <Card title="문항별 수치 요약" action={<CopyButton text={report} label="수치 요약 복사" />}>
           <pre className="whitespace-pre-wrap break-words font-sans text-[14px] leading-relaxed">{report}</pre>
           <p className="mt-3 text-[12px] text-muted-text">수치만 정리한 초안임. 서술 의견 원문은 들어가지 않음. 보고서에 옮긴 뒤 담당자가 검토할 것.</p>
         </Card>
@@ -142,11 +147,34 @@ function QuestionResult({ q, no, isKpi }: { q: QuestionAgg; no: number; isKpi: b
       {q.type === "scale5" && (
         <>
           <p className="mb-2 text-[14px]">
-            평균 <strong className="text-[18px] tabular-nums">{q.valid ? q.mean : "-"}</strong>점 · 긍정(4~5점) {q.posPct}% ({q.pos}/{q.valid}명)
+            평균 <strong className="text-[18px] tabular-nums">{q.valid ? q.mean : "-"}</strong>점 · 긍정(4~5점) {q.posPct}% ({q.pos}/{q.valid}명) · ‘{q.high}’ {q.topPct}%
           </p>
           <DistBar dist={q.dist} label={q.text} />
           <p className="mt-1 text-[12px] text-muted-text">
             1 = {q.low} · 5 = {q.high}
+          </p>
+        </>
+      )}
+
+      {q.type === "scale10" && (
+        <>
+          <p className="mb-2 text-[14px]">
+            평균 <strong className="text-[18px] tabular-nums">{q.valid ? q.mean : "-"}</strong>점(10점 만점) · 9~10점 {q.topPct}% ({q.top}/{q.valid}명)
+          </p>
+          <ol className="flex h-24 items-end gap-1" aria-label={`${q.text}: ${q.dist.map((c, i) => `${i + 1}점 ${c}명`).join(", ")}`}>
+            {q.dist.map((c, i) => {
+              const max = Math.max(1, ...q.dist);
+              return (
+                <li key={i} className="flex h-full flex-1 flex-col items-center justify-end">
+                  <span className="text-[10px] tabular-nums text-muted-text">{c || ""}</span>
+                  <span className="w-full rounded-t-[4px] bg-t-scale10" style={{ height: `${(c / max) * 100}%`, minHeight: c ? 3 : 0 }} />
+                  <span className="mt-1 text-[11px] text-muted-text">{i + 1}</span>
+                </li>
+              );
+            })}
+          </ol>
+          <p className="mt-1 text-[12px] text-muted-text">
+            1 = {q.low} · 10 = {q.high}
           </p>
         </>
       )}

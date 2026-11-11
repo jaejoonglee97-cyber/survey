@@ -1,4 +1,4 @@
-import { LIMITS, MULTI_SEP, type Question, type SurveySpec } from "./spec";
+import { isScaleType, LIMITS, MULTI_SEP, scaleMax, type Question, type SurveySpec } from "./spec";
 
 // 응답 검증·정규화. 프로토타입 buildRow_ 와 같은 규칙.
 // 결과 row 는 문항 순서의 셀 문자열 배열(응답 탭에 그대로 한 행으로 저장).
@@ -74,10 +74,11 @@ export function normalizeAnswers(spec: Pick<SurveySpec, "questions">, answers: u
       }
       if (q.max && vals.length > q.max) return fail(q.id + ": 최대 " + q.max + "개까지 선택할 수 있음");
       cell = vals.join(MULTI_SEP);
-    } else if (q.type === "scale5") {
-      if (typeof a !== "number" && typeof a !== "string") return fail(q.id + ": 1~5 사이 값이어야 함");
+    } else if (isScaleType(q.type)) {
+      const max = scaleMax(q.type);
+      if (typeof a !== "number" && typeof a !== "string") return fail(q.id + `: 1~${max} 사이 값이어야 함`);
       const n = Number(a);
-      if (!(n >= 1 && n <= 5 && Math.floor(n) === n)) return fail(q.id + ": 1~5 사이 값이어야 함");
+      if (!(n >= 1 && n <= max && Math.floor(n) === n)) return fail(q.id + `: 1~${max} 사이 값이어야 함`);
       cell = String(n);
     } else {
       if (typeof a !== "string") return fail(q.id + ": 서술 응답 형식이 올바르지 않음");

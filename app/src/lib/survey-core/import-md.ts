@@ -4,8 +4,8 @@ import { LIMITS, SLUG_RE, type Question, type QuestionType, type SurveySpec } fr
 // md 문항 파일 ↔ 설문 명세. md 는 가져오기·내보내기 형식일 뿐 기준 데이터가 아님.
 // 형식과 오류 문구는 프로토타입(reference/Survey.gs parseSurveyMd_)과 같음.
 
-const TYPE_TAGS: Record<string, QuestionType> = { 단일: "single", 복수: "multi", "5점": "scale5", 서술: "text" };
-const TAG_OF: Record<QuestionType, string> = { single: "단일", multi: "복수", scale5: "5점", text: "서술" };
+const TYPE_TAGS: Record<string, QuestionType> = { 단일: "single", 복수: "multi", "5점": "scale5", "10점": "scale10", 서술: "text" };
+const TAG_OF: Record<QuestionType, string> = { single: "단일", multi: "복수", scale5: "5점", scale10: "10점", text: "서술" };
 
 export interface ImportResult {
   ok: boolean;
@@ -98,7 +98,7 @@ export function importMd(md: string): ImportResult {
     if (line === "") continue;
 
     if (/^##/.test(line)) {
-      const qm = line.match(/^##\s*\[\s*(단일|복수|5점|서술)\s*(\*)?\s*(?::\s*(\d+))?\s*\]\s*(.+)$/);
+      const qm = line.match(/^##\s*\[\s*(단일|복수|10점|5점|서술)\s*(\*)?\s*(?::\s*(\d+))?\s*\]\s*(.+)$/);
       if (!qm) {
         errors.push(no + '행: 문항 형식 오류 → "## [단일*] 질문" 형태여야 함 (유형: 단일, 복수, 5점, 서술)');
         cur = null;
@@ -185,7 +185,7 @@ export function importMd(md: string): ImportResult {
       }
       if (q.type === "multi" && q.max && q.max > q.options.length) warnings.push(q.id + ": 선택 개수 제한이 보기 수보다 큼");
     }
-    if (q.type === "scale5") {
+    if (q.type === "scale5" || q.type === "scale10") {
       if (!q.low) q.low = "매우 낮음";
       if (!q.high) q.high = "매우 높음";
     }
@@ -212,7 +212,7 @@ function cleanQuestion(q: Question & { kpi?: boolean }): Question {
   if (q.note) out.note = q.note;
   if (q.type === "single" || q.type === "multi") out.options = q.options ?? [];
   if (q.type === "multi" && q.max) out.max = q.max;
-  if (q.type === "scale5") {
+  if (q.type === "scale5" || q.type === "scale10") {
     out.low = q.low;
     out.high = q.high;
   }
@@ -239,7 +239,7 @@ export function exportMd(spec: SurveySpec): string {
     const mod = (q.required ? "*" : "") + (q.type === "multi" && q.max ? `:${q.max}` : "");
     L.push(`## [${TAG_OF[q.type]}${mod}] ${q.text}`);
     if (q.note) L.push(`설명: ${q.note}`);
-    if (q.type === "scale5") {
+    if (q.type === "scale5" || q.type === "scale10") {
       L.push(`low: ${q.low ?? ""}`, `high: ${q.high ?? ""}`);
       if (spec.kpiQuestionId === q.id) L.push("지표: 대표만족");
     }
