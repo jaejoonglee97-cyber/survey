@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { deleteSurveyAction, setDeadlineAction, setStatusAction } from "@/app/survey/actions";
+import { deleteSurveyAction, duplicateSurveyAction, setDeadlineAction, setStatusAction } from "@/app/survey/actions";
 import { parseDeadline, type SurveyStatus } from "@/lib/survey-core";
 import { buttonCls } from "./ui";
 
@@ -121,6 +121,25 @@ export function RowActions({
               )}
             </>
           )}
+          <li role="none">
+            <button
+              role="menuitem"
+              type="button"
+              className="w-full rounded-[8px] px-3 py-2 text-left hover:bg-bg"
+              onClick={() =>
+                start(async () => {
+                  const r = await duplicateSurveyAction(id);
+                  if (r.ok) router.push(`/survey/${r.value.id}/edit`);
+                  else {
+                    setMsg(r.error);
+                    setMode(null);
+                  }
+                })
+              }
+            >
+              복제해서 새 설문
+            </button>
+          </li>
           {responses === 0 && (
             <li role="none">
               <button role="menuitem" type="button" className="w-full rounded-[8px] px-3 py-2 text-left text-[#8a3520] hover:bg-bg" onClick={() => setMode("delete")}>

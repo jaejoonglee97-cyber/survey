@@ -3,6 +3,7 @@ import {
   aggregate,
   applyAutoFixes,
   effectiveState,
+  isTestSurvey,
   kpiOf,
   LIMITS,
   normalizeAnswers,
@@ -24,6 +25,16 @@ import { FIXED_TABS, planFixedTabs, RESPONSE_TAB_PREFIX, type TabPlan } from "..
 // 화면과 API 는 이 클래스만 쓰고 시트 구조를 직접 알지 않음.
 
 export type StaffRole = "admin" | "viewer";
+
+export interface StaffMember {
+  email: string;
+  role: StaffRole | null;
+  active: boolean;
+  addedAt: string;
+}
+
+/** staff 탭 active 칸에서 '활성'으로 보는 값 */
+const ACTIVE_MARKS = ["true", "y", "yes", "1", "o", "예"];
 
 export interface SurveyRecord {
   id: string;
@@ -393,6 +404,27 @@ export class SurveyStore {
     return ok(undefined);
   }
 
+  /**
+   * 시험 설문 완전 삭제(응답 포함). 시험 설문(링크 주소 test-…, 제목·사업명 [시험]…)만 가능.
+   * 실제 설문의 응답은 이 방법으로 지울 수 없음.
+   */
+  async purgeTestSurvey(id: string): Promise<StoreResult<{ responses: number }>> {
+    const cur = await this.getById(id);
+    if (!cur) return fail("설문을 찾을 수 없음");
+    if (!isTestSurvey(cur.spec)) return fail("시험 설문만 응답과 함께 지울 수 있음");
+    const tab = responseTabName(cur.spec.slug);
+    let responses = 0;
+    if ((await this.gw.listTabs()).includes(tab)) {
+      responses = Math.max(0, (await this.gw.readAll(tab)).length - 1);
+      await this.gw.deleteTab(tab);
+    }
+    const row = await this.rowIndexOf(id);
+    if (row > 0) await this.gw.deleteRow("surveys", row);
+    this.invalidate();
+    await this.deleteSummary(id);
+    return ok({ responses });
+  }
+
   // ───────── 응답 ─────────
 
   /** 공개 응답 제출: 마감 확인(제출 순간 기준) → 검증 → 행 추가. IP·기기 정보는 저장하지 않음 */
@@ -455,7 +487,7 @@ export class SurveyStore {
     for (const r of rows) {
       if ((r[0] ?? "").trim().toLowerCase() !== e) continue;
       const active = (r[2] ?? "").trim().toLowerCase();
-      if (!["true", "y", "yes", "1", "o", "예"].includes(active)) return null;
+      if (!ACTIVE_MARKS.includes(active)) return null;
       const role = (r[1] ?? "").trim().toLowerCase();
       return role === "admin" || role === "viewer" ? role : null;
     }
@@ -470,6 +502,35 @@ export class SurveyStore {
     const values = [e, role, "TRUE", formatKst(this.now())];
     if (i >= 0) await this.gw.updateRow("staff", i + 2, values);
     else await this.gw.append("staff", [values]);
+    return ok(undefined);
+  }
+
+  /** 직원 목록(시트 순서). 역할이 admin/viewer 가 아니면 role 은 null */
+  async listStaff(): Promise<StaffMember[]> {
+    const rows = (await this.gw.readAll("staff")).slice(1);
+    return rows
+      .filter((r) => (r[0] ?? "").trim() !== "")
+      .map((r) => {
+        const role = (r[1] ?? "").trim().toLowerCase();
+        return {
+          email: (r[0] ?? "").trim().toLowerCase(),
+          role: role === "admin" || role === "viewer" ? role : null,
+          active: ACTIVE_MARKS.includes((r[2] ?? "").trim().toLowerCase()),
+          addedAt: r[3] ?? "",
+        };
+      });
+  }
+
+  /** 역할·활성 여부 변경. 등록 시각은 그대로 둠 */
+  async updateStaff(email: string, patch: { role?: StaffRole; active?: boolean }): Promise<StoreResult> {
+    const e = email.trim().toLowerCase();
+    const rows = (await this.gw.readAll("staff")).slice(1);
+    const i = rows.findIndex((r) => (r[0] ?? "").trim().toLowerCase() === e);
+    if (i < 0) return fail("직원 목록에 없는 이메일임");
+    const r = rows[i];
+    const role = patch.role ?? ((r[1] ?? "").trim().toLowerCase() || "viewer");
+    const active = patch.active ?? ACTIVE_MARKS.includes((r[2] ?? "").trim().toLowerCase());
+    await this.gw.updateRow("staff", i + 2, [e, role, active ? "TRUE" : "FALSE", r[3] ?? formatKst(this.now())]);
     return ok(undefined);
   }
 

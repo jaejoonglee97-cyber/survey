@@ -101,6 +101,11 @@ export const SurveySpecSchema = z.object({
   kpiQuestionId: z.string().nullable(),
 });
 
+/** 시험용 설문인지(링크 주소가 test- 로 시작하거나 제목·사업명이 [시험] 으로 시작). 시험 데이터 정리 대상 */
+export function isTestSurvey(spec: Pick<SurveySpec, "slug" | "title" | "program">): boolean {
+  return spec.slug.startsWith("test-") || spec.title.trim().startsWith("[시험]") || spec.program.trim().startsWith("[시험]");
+}
+
 /** 응답자에게 보내는 공개용 설문(대상 인원·내부 값 제외) */
 export interface PublicSurvey {
   title: string;

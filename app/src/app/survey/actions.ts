@@ -59,3 +59,35 @@ export async function deleteSurveyAction(id: string) {
     return r;
   });
 }
+
+export async function purgeTestSurveysAction(ids: string[]) {
+  return run(async () => {
+    const r = await cmd.purgeTestSurveys(getStore(), await getCurrentStaff(), ids);
+    if (r.ok) refresh();
+    return r;
+  });
+}
+
+export async function duplicateSurveyAction(id: string) {
+  return run(async () => {
+    const r = await cmd.duplicateSurvey(getStore(), await getCurrentStaff(), id);
+    if (r.ok) refresh();
+    return r;
+  });
+}
+
+export async function addStaffAction(email: string, role: "admin" | "viewer") {
+  return run(async () => {
+    const r = await cmd.addStaffMember(getStore(), await getCurrentStaff(), email, role, process.env.ALLOWED_EMAIL_DOMAIN);
+    if (r.ok) refresh();
+    return r;
+  });
+}
+
+export async function changeStaffAction(email: string, patch: { role?: "admin" | "viewer"; active?: boolean }) {
+  return run(async () => {
+    const r = await cmd.changeStaffMember(getStore(), await getCurrentStaff(), email, patch);
+    if (r.ok) refresh();
+    return r;
+  });
+}

@@ -2,9 +2,12 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { CopyButton } from "@/components/admin/CopyButton";
+import { ResponseProgress } from "@/components/admin/ResponseProgress";
 import { ShareCard } from "@/components/admin/ShareCard";
 import { Card, DistBar, PageHeader, StatCard, StateChip, buttonCls } from "@/components/admin/ui";
+import { daysLeft } from "@/lib/admin/overview";
 import { qrDataUrl, responseUrl } from "@/lib/admin/qr";
+import { responseTimeline } from "@/lib/admin/timeline";
 import { requirePage } from "@/lib/auth/staff";
 import { getStore } from "@/lib/sheets/client";
 import { aggregate, buildReportLines, kpiOf, pct, type QuestionAgg } from "@/lib/survey-core";
@@ -23,7 +26,7 @@ export default async function ResultsPage({ params, searchParams }: Props) {
   if (!rec) notFound();
   if (rec.status === "draft") redirect(`/survey/${id}/edit`);
 
-  const { rows } = await store.readResponses(rec);
+  const { rows, submittedAt } = await store.readResponses(rec);
   const agg = aggregate(rec.spec, rows);
   const kpi = kpiOf(rec.spec, agg);
   const report = buildReportLines(rec.spec, agg).join("\n");
@@ -64,6 +67,10 @@ export default async function ResultsPage({ params, searchParams }: Props) {
           unit={kpi && kpi.valid ? "/ 5점" : undefined}
           note={kpi && kpi.valid ? `긍정(4~5점) ${kpi.posPct}%` : "응답 없음"}
         />
+      </div>
+
+      <div className="mt-5">
+        <ResponseProgress n={agg.n} target={target} timeline={responseTimeline(submittedAt)} state={rec.state} daysLeft={daysLeft(rec.spec.deadline, new Date())} />
       </div>
 
       <div className="mt-5 space-y-4">
